@@ -10,7 +10,8 @@
 .canvas-wrap canvas { display: block; image-rendering: pixelated; touch-action: none; }
 
 /* HUD 칩 */
-.hud { position: absolute; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; z-index: 10; }
+.hud { position: absolute; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; z-index: 10; pointer-events: none; }
+.hud-chip, .hud .mini-btn, .hud-btns { pointer-events: auto; }
 .hud-tl { top: 10px; left: 10px; max-width: 60%; }
 .hud-tr { top: 10px; right: 10px; justify-content: flex-end; max-width: 78%; }
 .hud-chip {
@@ -924,3 +925,9 @@
 }
 .info-pop-title { margin: 0 0 8px; font-size: 18px; }
 .info-pop-body { margin: 0 0 14px; font-size: 13.5px; line-height: 1.6; opacity: 0.92; }
+
+/* 일꾼 직종별 그룹 */
+.job-group { margin-bottom: 10px; }
+.job-group-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; margin-bottom: 4px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); font-size: 13px; }
+.job-group-name b { color: var(--accent, #6dd36d); }
+.job-group-out { font-size: 12px; opacity: 0.85; }

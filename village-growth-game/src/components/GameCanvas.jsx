@@ -130,6 +130,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
         <button className="hud-chip tappable" onClick={() => setInfo('wood')}>🪵 {fmt(state.wood)}</button>
         <button className="hud-chip tappable" onClick={() => setInfo('stone')}>🪨 {fmt(state.stone)}</button>
         <button className="hud-chip tappable" onClick={() => setInfo('pop')}>👥 {Math.floor(state.population)}/{derived.maxPop}</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('happy')}>😊 {Math.round(state.happiness)}%</button>
         <button className="hud-chip tappable" onClick={() => setInfo('map')}>{w.mapIcon} {w.mapName}</button>
         <button className="hud-chip tappable" onClick={() => setInfo('level')}>🎖️ Lv.{state.level} · ⭐{fmt(state.fame)}</button>
       </div>
@@ -282,12 +283,35 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
       {toast && <div className={'game-toast log-' + toast.kind}>{toast.text}</div>}
 
       {/* HUD 칩 상세 설명 팝업 */}
-      {info && INFO[info] && (
+      {info && (INFO[info] || info === 'happy') && (
         <div className="info-pop-backdrop" onClick={() => setInfo(null)}>
           <div className="info-pop" onClick={(e) => e.stopPropagation()}>
-            <h3 className="info-pop-title">{INFO[info].t}</h3>
-            <p className="info-pop-body">{INFO[info].b}</p>
-            <button className="mini-btn wide" onClick={() => setInfo(null)}>알겠어요</button>
+            {info === 'happy' ? (
+              <>
+                <h3 className="info-pop-title">😊 행복도 {Math.round(state.happiness)}%</h3>
+                <p className="info-pop-body">행복도는 아래 5가지 <b>만족도의 평균</b>에서 세율을 뺀 값으로 정해집니다. 60% 이상이면 인구가 늘고, 35% 미만이면 떠납니다.</p>
+                <ul className="sat-list">
+                  {[['food', '🍗 배고픔'], ['safety', '🛡️ 안전'], ['culture', '🎭 문화'], ['education', '📚 교육'], ['hygiene', '🚿 위생']].map(([k, name]) => {
+                    const v = Math.round(state.satisfaction[k]);
+                    return (
+                      <li key={k} className="sat-row">
+                        <span className="sat-name">{name}</span>
+                        <span className="sat-bar"><span className="sat-fill" style={{ width: `${v}%`, background: v > 60 ? '#6dd36d' : v > 35 ? '#f4c542' : '#e0604a' }} /></span>
+                        <span className="sat-val">{v}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="info-pop-body" style={{ marginTop: 8 }}>세율 {state.taxRate}% · 올리려면: 식량 확보, 우물🚿·학교📚·화단🎭·경비탑🛡️ 등을 설치하세요.</p>
+                <button className="mini-btn wide" onClick={() => setInfo(null)}>알겠어요</button>
+              </>
+            ) : (
+              <>
+                <h3 className="info-pop-title">{INFO[info].t}</h3>
+                <p className="info-pop-body">{INFO[info].b}</p>
+                <button className="mini-btn wide" onClick={() => setInfo(null)}>알겠어요</button>
+              </>
+            )}
           </div>
         </div>
       )}
