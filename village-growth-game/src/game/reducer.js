@@ -18,6 +18,10 @@ import { RECIPES, itemCount } from './crafting';
 import { QUESTS, questProgress } from './quests';
 import { itemDef } from './items';
 import { enhanceCost, enhanceChance, repairCost } from './combat';
+import {
+  WAR_UNLOCK_RANK, GENERAL_COST, TROOPS, TROOP_LIST,
+  rollGeneral, armyPower, troopCount, villageDefense,
+} from './military';
 
 // 경험치 → 레벨 (다음 레벨까지 level*100 필요)
 function levelFromExp(exp) {
@@ -502,6 +506,52 @@ export function gameReducer(state, action) {
       };
       if (next.level > lvlBefore) next.log = [{ day: state.day, text: `🆙 레벨업! 플레이어 레벨 ${next.level} 달성!`, kind: 'good' }, ...next.log].slice(0, 60);
       return next;
+    }
+
+    // --- 군사: 장수 / 군대 / 정복 ---
+    case 'RECRUIT_GENERAL': {
+      if (state.rankIndex < WAR_UNLOCK_RANK) return { ...state, log: log(state, '촌장 이상부터 장수를 등용할 수 있습니다.', 'warn') };
+      if (state.money < GENERAL_COST) return { ...state, log: log(state, `등용 비용(${GENERAL_COST}골드)이 부족합니다.`, 'warn') };
+      const g = rollGeneral(state.nextGeneralId, state.generals.map((x) => x.name));
+      return {
+        ...state, money: state.money - GENERAL_COST,
+        generals: [...state.generals, g], nextGeneralId: state.nextGeneralId + 1,
+        log: log(state, `🎖️ 장수 '${g.name}' 등용! (무${g.might}/통${g.command}/지${g.intellect})`, 'good'),
+      };
+    }
+    case 'DISMISS_GENERAL': {
+      const g = state.generals.find((x) => x.id === action.id);
+      if (!g) return state;
+      return { ...state, generals: state.generals.filter((x) => x.id !== action.id), log: log(state, `${g.name} 장수를 해임했습니다.`, 'info') };
+    }
+    case 'RECRUIT_TROOP': {
+      if (state.rankIndex < WAR_UNLOCK_RANK) return { ...state, log: log(state, '촌장 이상부터 군대를 모집할 수 있습니다.', 'warn') };
+      const t = TROOPS[action.troop]; const qty = action.qty || 1; const cost = t.cost * qty;
+      if (state.money < cost) return { ...state, log: log(state, '골드가 부족합니다.', 'warn') };
+      return { ...state, money: state.money - cost, army: { ...state.army, [t.id]: (state.army[t.id] || 0) + qty }, log: log(state, `${t.icon} ${t.name} ${qty} 모집.`, 'good') };
+    }
+    case 'DISBAND_TROOP': {
+      const t = TROOPS[action.troop]; const have = state.army[t.id] || 0; const qty = Math.min(action.qty || 1, have);
+      if (qty <= 0) return state;
+      return { ...state, army: { ...state.army, [t.id]: have - qty }, log: log(state, `${t.name} ${qty} 해산.`, 'info') };
+    }
+    case 'ATTACK_VILLAGE': {
+      const v = state.villages.find((x) => x.id === action.id);
+      if (!v || !v.discovered || v.owned) return state;
+      if (state.generals.length === 0) return { ...state, log: log(state, '장수가 없으면 출정할 수 없습니다.', 'warn') };
+      if (troopCount(state) === 0) return { ...state, log: log(state, '군대가 없습니다. 병력을 모집하세요.', 'warn') };
+      const tpl = VILLAGE_TEMPLATES.find((t) => t.id === v.id);
+      const atk = armyPower(state) * (0.85 + Math.random() * 0.3);
+      const def = villageDefense(v.id);
+      const win = atk >= def;
+      const lossRate = win ? 0.2 : 0.45;
+      const army = { ...state.army };
+      for (const t of TROOP_LIST) army[t.id] = Math.round((army[t.id] || 0) * (1 - lossRate));
+      if (win) {
+        const villages = state.villages.map((x) => x.id === v.id ? { ...x, owned: true, tradeOpen: true } : x);
+        return { ...state, army, villages, influence: state.influence + tpl.influence * 3, log: log(state, `🏰 '${tpl.name}' 정복 성공! 영토로 편입했습니다.`, 'good') };
+      }
+      return { ...state, army, log: log(state, `⚔️ '${tpl.name}' 공격 실패... 병력을 잃었습니다.`, 'warn') };
     }
 
     // --- 행정 ---

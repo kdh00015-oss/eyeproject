@@ -20,6 +20,7 @@ import InventoryWindow from './windows/InventoryWindow';
 import CraftingWindow from './windows/CraftingWindow';
 import QuestWindow from './windows/QuestWindow';
 import HuntWindow from './windows/HuntWindow';
+import MilitaryWindow from './windows/MilitaryWindow';
 import SaveSlots from './windows/SaveSlots';
 
 const PANELS = {
@@ -48,6 +49,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
       else if (k === 'c') setWin((v) => (v === 'craft' ? null : 'craft'));
       else if (k === 'q') setWin((v) => (v === 'quest' ? null : 'quest'));
       else if (k === 'h') setWin((v) => (v === 'hunt' ? null : 'hunt'));
+      else if (k === 'g') setWin((v) => (v === 'war' ? null : 'war'));
       else if (k === 'escape') setWin(null);
     };
     window.addEventListener('keydown', onKey);
@@ -59,6 +61,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
     craft: { title: '제작', icon: '⚒️', el: <CraftingWindow state={state} actions={actions} /> },
     quest: { title: '퀘스트', icon: '📜', el: <QuestWindow state={state} derived={derived} actions={actions} /> },
     hunt: { title: '사냥', icon: '⚔️', el: <HuntWindow state={state} actions={actions} /> },
+    war: { title: '군사·전쟁', icon: '🏰', el: <MilitaryWindow state={state} actions={actions} /> },
     slots: { title: '세이브 슬롯', icon: '💾', el: <SaveSlots current={slot} slotTick={slotTick} onSave={saveToSlot} onLoad={loadFromSlot} onNew={newGameInSlot} /> },
   };
 
@@ -120,6 +123,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
           <button className={'mini-btn' + (win === 'craft' ? ' on' : '')} onClick={() => setWin((v) => v === 'craft' ? null : 'craft')}>⚒️</button>
           <button className={'mini-btn' + (win === 'quest' ? ' on' : '')} onClick={() => setWin((v) => v === 'quest' ? null : 'quest')}>📜</button>
           <button className={'mini-btn' + (win === 'hunt' ? ' on' : '')} onClick={() => setWin((v) => v === 'hunt' ? null : 'hunt')}>⚔️</button>
+          <button className={'mini-btn' + (win === 'war' ? ' on' : '')} onClick={() => setWin((v) => v === 'war' ? null : 'war')}>🏰</button>
           <button className="mini-btn" onClick={() => setMenuOpen((v) => !v)}>☰</button>
         </div>
       </div>
