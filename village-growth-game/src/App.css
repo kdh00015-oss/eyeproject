@@ -136,6 +136,59 @@
   .minimap { width: 150px; height: 109px; }
 }
 
+/* 인벤토리 창 */
+.inv-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.inv-tab { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 13px; }
+.inv-tab.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(109,211,109,0.3) inset; }
+.inv-sort { margin-left: auto; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+.inv-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 12px; }
+@media (max-width: 560px) { .inv-grid { grid-template-columns: repeat(6, 1fr); } }
+.inv-slot {
+  position: relative; aspect-ratio: 1/1; background: var(--panel);
+  border: 2px solid var(--border); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.inv-slot.empty { opacity: 0.35; cursor: default; }
+.inv-slot.sel { box-shadow: 0 0 0 2px var(--accent-2); }
+.inv-icon { font-size: 22px; }
+.inv-count { position: absolute; bottom: 1px; right: 3px; font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
+.inv-eq { position: absolute; top: 1px; left: 3px; font-size: 9px; color: var(--accent-2); font-weight: 700; }
+.inv-detail { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.inv-detail-head { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+.inv-detail-icon { font-size: 30px; }
+.inv-detail-name { font-weight: 800; font-size: 16px; }
+.inv-detail-meta { font-size: 12px; color: var(--text-dim); }
+.inv-detail-desc { font-size: 13px; color: var(--text-dim); margin: 0 0 10px; line-height: 1.5; }
+
+/* 제작 창 */
+.craft-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.craft-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+.craft-out { font-weight: 700; }
+.craft-inputs { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 8px; }
+.craft-mat { font-size: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; }
+.craft-mat.lack { color: var(--danger); border-color: var(--danger); }
+
+/* 퀘스트 창 */
+.quest-list { display: flex; flex-direction: column; gap: 8px; }
+.quest-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+.quest-card.done { opacity: 0.6; }
+.quest-top { display: flex; justify-content: space-between; align-items: center; }
+.quest-name { font-weight: 700; }
+.quest-reward { font-size: 12px; color: var(--accent-2); }
+.quest-desc { font-size: 12px; color: var(--text-dim); margin: 4px 0 6px; }
+.quest-bar { height: 7px; background: var(--bg); border-radius: 999px; overflow: hidden; margin-bottom: 6px; }
+.quest-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+.quest-foot { display: flex; justify-content: space-between; align-items: center; }
+.quest-claimed { color: var(--accent); font-size: 13px; font-weight: 700; }
+
+/* 세이브 슬롯 */
+.slots { display: flex; flex-direction: column; gap: 8px; }
+.slot-card { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; flex-wrap: wrap; }
+.slot-card.active { border-color: var(--accent); }
+.slot-title { font-weight: 700; display: block; }
+.slot-meta { font-size: 12px; color: var(--text-dim); }
+.slot-actions { display: flex; gap: 6px; }
+
 /* 진행 로그 토스트 */
 .game-toast {
   position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);

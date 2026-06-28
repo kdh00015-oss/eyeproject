@@ -16,6 +16,10 @@ import ResearchPanel from './panels/ResearchPanel';
 import MarketPanel from './panels/MarketPanel';
 import TradePanel from './panels/TradePanel';
 import WorkersPanel from './panels/WorkersPanel';
+import InventoryWindow from './windows/InventoryWindow';
+import CraftingWindow from './windows/CraftingWindow';
+import QuestWindow from './windows/QuestWindow';
+import SaveSlots from './windows/SaveSlots';
 
 const PANELS = {
   fishing: FishingPanel, livestock: LivestockPanel, build: BuildPanel,
@@ -28,11 +32,32 @@ const TOOLS = [
   { id: 'seeds', icon: '🌱', name: '씨앗' },
 ];
 
-export default function GameCanvas({ state, derived, time, actions, onSave }) {
+export default function GameCanvas({ state, derived, time, actions, onSave, slot, saveToSlot, loadFromSlot, newGameInSlot, slotTick }) {
   const w = useWorld({ state, time, actions });
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [win, setWin] = useState(null); // 'inv' | 'craft' | 'quest' | 'slots'
+
+  // 단축키로 창 열기 (이동키와 충돌 없음)
+  useEffect(() => {
+    const onKey = (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'i') setWin((v) => (v === 'inv' ? null : 'inv'));
+      else if (k === 'c') setWin((v) => (v === 'craft' ? null : 'craft'));
+      else if (k === 'q') setWin((v) => (v === 'quest' ? null : 'quest'));
+      else if (k === 'escape') setWin(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const WINDOWS = {
+    inv: { title: '인벤토리', icon: '🎒', el: <InventoryWindow state={state} actions={actions} /> },
+    craft: { title: '제작', icon: '⚒️', el: <CraftingWindow state={state} actions={actions} /> },
+    quest: { title: '퀘스트', icon: '📜', el: <QuestWindow state={state} derived={derived} actions={actions} /> },
+    slots: { title: '세이브 슬롯', icon: '💾', el: <SaveSlots current={slot} slotTick={slotTick} onSave={saveToSlot} onLoad={loadFromSlot} onNew={newGameInSlot} /> },
+  };
 
   // 최신 진행 로그를 토스트로 표시
   const [toast, setToast] = useState(null);
@@ -69,6 +94,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave }) {
         <span className="hud-chip">🪨 {fmt(state.stone)}</span>
         <span className="hud-chip">👥 {Math.floor(state.population)}/{derived.maxPop}</span>
         <span className="hud-chip">{w.mapId === 'village' ? '🏡' : '🌲'} {w.mapName}</span>
+        <span className="hud-chip">🎖️ Lv.{state.level} · ⭐{fmt(state.fame)}</span>
       </div>
 
       {/* 상단 우: 시간/계절/날씨/직위 + 컨트롤 */}
@@ -87,6 +113,9 @@ export default function GameCanvas({ state, derived, time, actions, onSave }) {
           <button className="mini-btn" onClick={() => w.setZoom((z) => Math.min(2.6, z + 0.2))}>➕</button>
           <button className="mini-btn" onClick={() => w.setZoom((z) => Math.max(0.8, z - 0.2))}>➖</button>
           <button className={'mini-btn' + (w.showMap ? ' on' : '')} onClick={() => w.setShowMap((v) => !v)}>🗺️</button>
+          <button className={'mini-btn' + (win === 'inv' ? ' on' : '')} onClick={() => setWin((v) => v === 'inv' ? null : 'inv')}>🎒</button>
+          <button className={'mini-btn' + (win === 'craft' ? ' on' : '')} onClick={() => setWin((v) => v === 'craft' ? null : 'craft')}>⚒️</button>
+          <button className={'mini-btn' + (win === 'quest' ? ' on' : '')} onClick={() => setWin((v) => v === 'quest' ? null : 'quest')}>📜</button>
           <button className="mini-btn" onClick={() => setMenuOpen((v) => !v)}>☰</button>
         </div>
       </div>
@@ -101,8 +130,8 @@ export default function GameCanvas({ state, derived, time, actions, onSave }) {
 
       {menuOpen && (
         <div className="menu-pop">
-          <button className="mini-btn wide" onClick={() => { onSave(); setMenuOpen(false); }}>💾 저장</button>
-          <button className="mini-btn wide" onClick={() => { if (confirm('새로 시작할까요? 진행이 사라집니다.')) actions.newGame(); setMenuOpen(false); }}>🌱 새 게임</button>
+          <button className="mini-btn wide" onClick={() => { onSave(); setMenuOpen(false); }}>💾 빠른 저장</button>
+          <button className="mini-btn wide" onClick={() => { setWin('slots'); setMenuOpen(false); }}>🗂️ 세이브 슬롯</button>
         </div>
       )}
 
@@ -176,6 +205,13 @@ export default function GameCanvas({ state, derived, time, actions, onSave }) {
       {w.activeBuilding && ActivePanel && (
         <Modal title={w.activeBuilding.name} icon="🏠" onClose={() => w.setActiveBuilding(null)}>
           <ActivePanel state={state} derived={derived} time={time} actions={actions} />
+        </Modal>
+      )}
+
+      {/* 인벤토리/제작/퀘스트/세이브 창 */}
+      {win && WINDOWS[win] && (
+        <Modal title={WINDOWS[win].title} icon={WINDOWS[win].icon} onClose={() => setWin(null)}>
+          {WINDOWS[win].el}
         </Modal>
       )}
     </div>
