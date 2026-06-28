@@ -2,6 +2,7 @@
 
 import { RECIPES, itemCount, canCraft } from '../../game/crafting';
 import { itemDef, RARITY } from '../../game/items';
+import { materialSource } from '../../game/shops';
 
 export default function CraftingWindow({ state, actions }) {
   return (
@@ -20,11 +21,22 @@ export default function CraftingWindow({ state, actions }) {
                 {r.inputs.map((i) => {
                   const def = itemDef(i.id);
                   const have = itemCount(state, i.id);
+                  const src = materialSource(i.id);
                   return (
-                    <span key={i.id} className={'craft-mat' + (have >= i.qty ? '' : ' lack')}>
+                    <span key={i.id} className={'craft-mat' + (have >= i.qty ? '' : ' lack')}
+                      title={`${def.name} — ${src || '농사·낚시 등으로 획득'}`}>
                       {def.icon} {have}/{i.qty}
                     </span>
                   );
+                })}
+              </div>
+              {/* 재료 수급 안내 */}
+              <div className="craft-source">
+                {r.inputs.map((i) => {
+                  const src = materialSource(i.id);
+                  if (!src) return null;
+                  const def = itemDef(i.id);
+                  return <span key={i.id} className="src-row">{def.icon} {def.name}: {src}</span>;
                 })}
               </div>
               <button className="wide-btn" disabled={!ok} onClick={() => actions.craft(r.id)}>제작</button>
