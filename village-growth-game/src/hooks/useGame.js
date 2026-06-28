@@ -46,6 +46,7 @@ export function useGame() {
       sellGood: (goodId, qty) => dispatch({ type: 'SELL_GOOD', goodId, qty }),
       buyGood: (goodId, qty) => dispatch({ type: 'BUY_GOOD', goodId, qty }),
       buyFeed: (qty) => dispatch({ type: 'BUY_FEED', qty }),
+      upgradeRanch: () => dispatch({ type: 'UPGRADE_RANCH' }),
       build: (buildingId) => dispatch({ type: 'BUILD', buildingId }),
       chop: (key) => dispatch({ type: 'CHOP', key }),
       mine: (key) => dispatch({ type: 'MINE', key }),
