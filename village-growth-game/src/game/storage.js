@@ -17,6 +17,7 @@ function mergeBase(data) {
     livestock: { ...base.livestock, ...data.livestock },
     inventory: { ...base.inventory, ...data.inventory },
     prices: { ...base.prices, ...data.prices },
+    pricePressure: { ...(data.pricePressure || {}) },
     workers: Array.isArray(data.workers) ? data.workers : base.workers,
     stats: { ...base.stats, ...data.stats },
     dailyBase: { ...base.dailyBase, ...data.dailyBase },

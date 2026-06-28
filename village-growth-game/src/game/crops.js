@@ -56,6 +56,20 @@ export const CROPS = {
     basePrice: 30,
     seasons: ['summer', 'fall'],
   },
+  // --- 확장 작물 ---
+  carrot: { id: 'carrot', name: '당근', icon: '🥕', seedCost: 6, growthDays: 5, yield: 7, basePrice: 9, seasons: ['spring', 'fall'] },
+  cabbage: { id: 'cabbage', name: '양배추', icon: '🥬', seedCost: 10, growthDays: 5, yield: 7, basePrice: 13, seasons: ['spring', 'fall'] },
+  onion: { id: 'onion', name: '양파', icon: '🧅', seedCost: 8, growthDays: 4, yield: 8, basePrice: 10, seasons: ['spring', 'summer'] },
+  garlic: { id: 'garlic', name: '마늘', icon: '🧄', seedCost: 9, growthDays: 4, yield: 7, basePrice: 12, seasons: ['spring'] },
+  tomato: { id: 'tomato', name: '토마토', icon: '🍅', seedCost: 14, growthDays: 6, yield: 7, basePrice: 16, seasons: ['summer'] },
+  eggplant: { id: 'eggplant', name: '가지', icon: '🍆', seedCost: 16, growthDays: 6, yield: 7, basePrice: 20, seasons: ['summer'] },
+  chili: { id: 'chili', name: '고추', icon: '🌶️', seedCost: 15, growthDays: 5, yield: 7, basePrice: 18, seasons: ['summer', 'fall'] },
+  blueberry: { id: 'blueberry', name: '블루베리', icon: '🫐', seedCost: 22, growthDays: 7, yield: 8, basePrice: 24, seasons: ['summer'] },
+  melon: { id: 'melon', name: '멜론', icon: '🍈', seedCost: 28, growthDays: 9, yield: 5, basePrice: 40, seasons: ['summer'] },
+  pumpkin: { id: 'pumpkin', name: '호박', icon: '🎃', seedCost: 20, growthDays: 8, yield: 6, basePrice: 28, seasons: ['fall'] },
+  sweetPotato: { id: 'sweetPotato', name: '고구마', icon: '🍠', seedCost: 12, growthDays: 6, yield: 8, basePrice: 15, seasons: ['fall'] },
+  kale: { id: 'kale', name: '겨울초', icon: '🥬', seedCost: 18, growthDays: 6, yield: 6, basePrice: 22, seasons: ['winter'] },
+  ginseng: { id: 'ginseng', name: '인삼', icon: '🌿', seedCost: 45, growthDays: 12, yield: 4, basePrice: 90, seasons: ['fall', 'winter'] },
 };
 
 export const CROP_LIST = Object.values(CROPS);

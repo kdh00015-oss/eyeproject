@@ -11,6 +11,7 @@ export const RARITY = {
   uncommon: { id: 'uncommon', name: '고급', color: '#5fc36a' },
   rare: { id: 'rare', name: '희귀', color: '#5b9cf0' },
   epic: { id: 'epic', name: '영웅', color: '#b06bf0' },
+  legendary: { id: 'legendary', name: '전설', color: '#f0a93b' },
 };
 
 // 분류
@@ -28,7 +29,7 @@ const CROP_RARITY = { wheat: 'common', potato: 'common', corn: 'uncommon', straw
 for (const c of Object.values(CROPS)) add({ id: c.id, name: c.name, icon: c.icon, rarity: CROP_RARITY[c.id] || 'common', category: 'material', desc: `${c.name} — 농장에서 수확한 작물. 판매하거나 요리에 사용합니다.` });
 
 // 생선 (희귀종은 등급 ↑)
-for (const f of Object.values(FISH)) add({ id: f.id, name: f.name, icon: f.icon, rarity: f.rare ? (f.basePrice >= 100 ? 'epic' : 'rare') : 'common', category: 'material', desc: `${f.name} — 낚시로 잡은 물고기.${f.rare ? ' 희귀한 어종입니다!' : ''}` });
+for (const f of Object.values(FISH)) add({ id: f.id, name: f.name, icon: f.icon, rarity: f.legendary ? 'legendary' : f.rare ? (f.basePrice >= 100 ? 'epic' : 'rare') : 'common', category: 'material', desc: `${f.name} — 낚시로 잡은 물고기.${f.legendary ? ' ✨전설의 물고기!' : f.rare ? ' 희귀한 어종입니다!' : ''}` });
 
 // 축산물
 const PROD_RARITY = { egg: 'common', milk: 'common', wool: 'uncommon', truffle: 'rare' };
@@ -77,9 +78,20 @@ add({ id: 'bread', name: '빵', icon: '🍞', rarity: 'common', category: 'consu
 add({ id: 'feast', name: '잔칫상', icon: '🍲', rarity: 'uncommon', category: 'consumable', desc: '푸짐한 잔칫상. 사용하면 주민 행복도가 +15 오릅니다.', effect: { happiness: 15 } });
 add({ id: 'potion', name: '치유 물약', icon: '🧪', rarity: 'uncommon', category: 'consumable', desc: '전투 중 체력을 40 회복합니다.', effect: { heal: 40 } });
 
+// --- 가공 재료/식품 (제작 확장) ---
+add({ id: 'flour', name: '밀가루', icon: '🌾', rarity: 'common', category: 'material', desc: '밀을 빻은 가루. 빵·파이의 재료.' });
+add({ id: 'cheese', name: '치즈', icon: '🧀', rarity: 'uncommon', category: 'consumable', desc: '숙성 치즈. 행복도 +10.', effect: { happiness: 10 } });
+add({ id: 'jam', name: '잼', icon: '🍯', rarity: 'uncommon', category: 'consumable', desc: '달콤한 베리 잼. 행복도 +8.', effect: { happiness: 8 } });
+add({ id: 'salad', name: '샐러드', icon: '🥗', rarity: 'uncommon', category: 'consumable', desc: '신선한 채소 샐러드. 행복도 +12.', effect: { happiness: 12 } });
+add({ id: 'honeyTea', name: '꿀차', icon: '🍵', rarity: 'common', category: 'consumable', desc: '따뜻한 꿀차. 행복도 +9.', effect: { happiness: 9 } });
+add({ id: 'pumpkinPie', name: '호박파이', icon: '🥧', rarity: 'rare', category: 'consumable', desc: '향긋한 호박파이. 행복도 +16.', effect: { happiness: 16 } });
+add({ id: 'wine', name: '와인', icon: '🍷', rarity: 'rare', category: 'consumable', desc: '잘 익은 포도주. 행복도 +18.', effect: { happiness: 18 } });
+add({ id: 'sashimi', name: '회', icon: '🍣', rarity: 'rare', category: 'consumable', desc: '신선한 생선회. 행복도 +14.', effect: { happiness: 14 } });
+add({ id: 'greatPotion', name: '상급 물약', icon: '⚗️', rarity: 'rare', category: 'consumable', desc: '전투 중 체력을 90 회복합니다.', effect: { heal: 90 } });
+
 export const ITEM_DB = ITEMS;
 export function itemDef(id) { return ITEMS[id] || { id, name: id, icon: '❓', rarity: 'common', category: 'material', maxStack: 99, desc: '' }; }
 
 // 인벤토리에서 표시할 분류 순서/희귀도 정렬용 가중치
-export const RARITY_ORDER = { common: 0, uncommon: 1, rare: 2, epic: 3 };
+export const RARITY_ORDER = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
 export const CATEGORY_ORDER = { material: 0, consumable: 1, equipment: 2 };
