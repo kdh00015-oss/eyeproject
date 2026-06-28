@@ -103,7 +103,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
         <span className="hud-chip">{time.season.icon} {time.year}년차 {time.dayOfSeason}일</span>
         <span className="hud-chip">{weather.icon}</span>
         <span className="hud-chip">{rank.icon} {rank.name}</span>
-        <span className="hud-chip">🏘️ {derived.grade.name}</span>
+        <span className="hud-chip">🏘️ 마을 Lv.{state.villageLevel} · {derived.grade.name}</span>
         <div className="hud-btns">
           {['pause', 'x1', 'x2'].map((s) => (
             <button key={s} className={'mini-btn' + (w.speedId === s ? ' on' : '')} onClick={() => w.setSpeedId(s)}>
@@ -148,14 +148,17 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
       </div>
 
       {/* 배치 모드 팔레트 */}
-      {w.placeType ? (
-        <div className="place-bar">
-          <span className="place-info">📦 배치: {PLACEABLES[w.placeType].icon} {PLACEABLES[w.placeType].name}
-            ({PLACEABLES[w.placeType].wood}🪵 {PLACEABLES[w.placeType].stone}🪨)</span>
-          <span className="place-hint">정면 타일 클릭/스페이스로 설치</span>
-          <button className="mini-btn" onClick={() => w.setPlaceType(null)}>취소 ✕</button>
-        </div>
-      ) : null}
+      {w.placeType ? (() => {
+        const d = PLACEABLES[w.placeType]; const c = d.cost || {};
+        return (
+          <div className="place-bar">
+            <span className="place-info">📦 {d.icon} {d.name} — {d.desc} ·
+              {c.gold ? ` 💰${c.gold}` : ''}{c.wood ? ` 🪵${c.wood}` : ''}{c.stone ? ` 🪨${c.stone}` : ''}</span>
+            <span className="place-hint">🟩설치가능 / 🟥불가 — 정면 클릭/스페이스</span>
+            <button className="mini-btn" onClick={() => w.setPlaceType(null)}>취소 ✕</button>
+          </div>
+        );
+      })() : null}
 
       {/* 핫바 (도구 + 씨앗 작물 + 배치) */}
       <div className="hotbar">
@@ -183,14 +186,18 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
           </div>
         )}
         <div className="build-strip">
-          {Object.values(PLACEABLES).map((p) => (
-            <button
-              key={p.id}
-              className={'slot small' + (w.placeType === p.id ? ' on' : '')}
-              onClick={() => w.setPlaceType(w.placeType === p.id ? null : p.id)}
-              title={`${p.name} (${p.wood}🪵 ${p.stone}🪨)`}
-            >{p.icon}</button>
-          ))}
+          {Object.values(PLACEABLES).map((p) => {
+            const locked = state.villageLevel < (p.unlock || 1);
+            return (
+              <button
+                key={p.id}
+                className={'slot small' + (w.placeType === p.id ? ' on' : '') + (locked ? ' locked' : '')}
+                disabled={locked}
+                onClick={() => w.setPlaceType(w.placeType === p.id ? null : p.id)}
+                title={locked ? `${p.name} — 마을 Lv.${p.unlock} 해금` : `${p.name} · ${p.desc}`}
+              >{locked ? '🔒' : p.icon}</button>
+            );
+          })}
         </div>
       </div>
 

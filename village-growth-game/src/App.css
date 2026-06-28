@@ -136,6 +136,15 @@
   .minimap { width: 150px; height: 109px; }
 }
 
+/* 주민 만족도 */
+.sat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.sat-row { display: grid; grid-template-columns: 64px 1fr 26px; align-items: center; gap: 6px; font-size: 12px; }
+.sat-name { color: var(--text-dim); }
+.sat-bar { height: 7px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+.sat-fill { display: block; height: 100%; transition: width 0.3s ease; }
+.sat-val { text-align: right; font-variant-numeric: tabular-nums; }
+.slot.locked { opacity: 0.5; }
+
 /* 인벤토리 창 */
 .inv-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
 .inv-tab { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 13px; }

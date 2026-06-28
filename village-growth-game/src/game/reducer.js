@@ -13,6 +13,7 @@ import { ANIMALS } from './livestock';
 import { BUILDINGS, buildingCost } from './buildings';
 import { RESEARCH_FIELDS, researchCost, MAX_RESEARCH_LEVEL } from './research';
 import { JOBS, randomName } from './workers';
+import { PLACEABLES } from './world/worldgen';
 import { RECIPES, itemCount } from './crafting';
 import { QUESTS, questProgress } from './quests';
 import { itemDef } from './items';
@@ -337,16 +338,25 @@ export function gameReducer(state, action) {
       };
     }
     case 'PLACE': {
-      const { ptype, x, y, cost, map } = action;
-      if (state.wood < cost.wood || state.stone < cost.stone) {
-        return { ...state, log: log(state, '자원이 부족합니다. (나무/돌 필요)', 'warn') };
+      const { ptype, x, y, map } = action;
+      const def = PLACEABLES[ptype];
+      if (!def) return state;
+      const derived = computeDerived(state);
+      if (derived.villageLevel < (def.unlock || 1)) {
+        return { ...state, log: log(state, `마을 레벨 ${def.unlock}에 해금되는 건물입니다.`, 'warn') };
+      }
+      const c = def.cost || {};
+      if (state.money < (c.gold || 0) || state.wood < (c.wood || 0) || state.stone < (c.stone || 0)) {
+        return { ...state, log: log(state, '자원이 부족합니다. (골드/목재/돌)', 'warn') };
       }
       return {
         ...state,
-        wood: state.wood - cost.wood,
-        stone: state.stone - cost.stone,
+        money: state.money - (c.gold || 0),
+        wood: state.wood - (c.wood || 0),
+        stone: state.stone - (c.stone || 0),
         placed: [...state.placed, { type: ptype, x, y, map: map || 'village' }],
-        log: log(state, `🏗️ 구조물을 설치했습니다.`, 'good'),
+        stats: { ...state.stats, built: state.stats.built + 1 },
+        log: log(state, `🏗️ ${def.name}을(를) 설치했습니다.`, 'good'),
       };
     }
 
