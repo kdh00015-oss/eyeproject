@@ -26,25 +26,29 @@ export const JOBS = {
 
 export const JOB_LIST = Object.values(JOBS);
 
-// 직종별 1인당 기본 산출(연구 효율 적용 전)
+// 직종별 1인당 기본 산출(연구 효율 적용 전) — 채집량 상향
 export const OUTPUT = {
-  lumberjackWood: 3, // 나무꾼: 목재/일
-  minerStone: 2, // 광부: 돌/일
-  fisherCatch: 2, // 어부: 마리/일
-  farmerPlots: 3, // 농부: 처리 밭 수/일
-  rancherBonus: 0.15, // 목축업자 1인당 축산물 +15%
+  lumberjackWood: 6, // 나무꾼: 목재/일
+  minerStone: 4, // 광부: 돌/일
+  fisherCatch: 4, // 어부: 마리/일
+  farmerPlots: 5, // 농부: 처리 밭 수/일
+  rancherBonus: 0.22, // 목축업자 1인당 축산물 +22%
 };
 
 // --- 숙련도(레벨) ---
-export const MAX_WORKER_LEVEL = 5;
-export const XP_THRESHOLDS = [0, 100, 250, 450, 700]; // index = level-1
+export const MAX_WORKER_LEVEL = 8;
+export const XP_THRESHOLDS = [0, 100, 250, 450, 700, 1050, 1500, 2100]; // index = level-1
 export function levelFromXp(xp) {
   let lvl = 1;
   for (let i = 0; i < XP_THRESHOLDS.length; i++) if (xp >= XP_THRESHOLDS[i]) lvl = i + 1;
   return lvl;
 }
 export function levelMult(level) {
-  return 1 + (level - 1) * 0.15; // 레벨당 +15% 효율
+  return 1 + (level - 1) * 0.3; // 레벨당 +30% 효율(고레벨일수록 큰 차이)
+}
+// 골드로 레벨업 훈련하는 비용 (현재 레벨 → 다음 레벨)
+export function trainCost(level) {
+  return 100 * level * level;
 }
 
 // --- 행복도/휴식 ---

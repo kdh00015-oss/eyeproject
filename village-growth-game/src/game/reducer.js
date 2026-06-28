@@ -14,7 +14,7 @@ import { FISHING_SPOTS } from './fishing';
 import { ANIMALS, ranchCap, ranchUpgradeCost, totalAnimals, RANCH_MAX_LEVEL } from './livestock';
 import { BUILDINGS, buildingCost } from './buildings';
 import { RESEARCH_FIELDS, researchCost, MAX_RESEARCH_LEVEL } from './research';
-import { JOBS, randomName } from './workers';
+import { JOBS, randomName, levelFromXp, trainCost, MAX_WORKER_LEVEL, XP_THRESHOLDS } from './workers';
 import { PLACEABLES } from './world/worldgen';
 import { RECIPES, itemCount } from './crafting';
 import { QUESTS, questProgress } from './quests';
@@ -491,6 +491,23 @@ export function gameReducer(state, action) {
         workers: [...state.workers, worker],
         nextWorkerId: state.nextWorkerId + 1,
         log: log(state, `${job.icon} ${job.name} '${name}'을(를) 고용했습니다.`, 'good'),
+      };
+    }
+    case 'TRAIN_WORKER': {
+      // 골드로 일꾼 레벨업 훈련 (즉시 다음 레벨)
+      const w = state.workers.find((x) => x.id === action.id);
+      if (!w) return state;
+      const lvl = levelFromXp(w.xp);
+      if (lvl >= MAX_WORKER_LEVEL) return { ...state, log: log(state, `${w.name}은(는) 이미 최고 레벨입니다.`, 'info') };
+      const cost = trainCost(lvl);
+      if (state.money < cost) return { ...state, log: log(state, `훈련비(${cost}골드)가 부족합니다.`, 'warn') };
+      const nextXp = XP_THRESHOLDS[lvl]; // 레벨 lvl+1 도달 경험치
+      const workers = state.workers.map((x) => x.id === w.id ? { ...x, xp: Math.max(x.xp, nextXp) } : x);
+      return {
+        ...state,
+        money: state.money - cost,
+        workers,
+        log: log(state, `📈 ${JOBS[w.job].name} '${w.name}'을(를) 훈련시켜 Lv.${lvl + 1}이 되었습니다!`, 'good'),
       };
     }
     case 'FIRE_WORKER': {

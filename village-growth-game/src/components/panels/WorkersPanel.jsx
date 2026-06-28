@@ -1,6 +1,6 @@
 // 고용소 탭: 일꾼 고용 + 개별 일꾼(이름/숙련도/행복도/휴식/작업량) 관리
 
-import { JOB_LIST, JOBS, OUTPUT, levelFromXp, levelMult, MAX_WORKER_LEVEL, XP_THRESHOLDS } from '../../game/workers';
+import { JOB_LIST, JOBS, OUTPUT, levelFromXp, levelMult, MAX_WORKER_LEVEL, XP_THRESHOLDS, trainCost } from '../../game/workers';
 
 // 현재 레벨 안에서의 경험치 진행도 + 다음 레벨까지 남은 경험치
 function xpInfo(xp) {
@@ -63,8 +63,8 @@ export default function WorkersPanel({ state, derived, actions }) {
         </div>
       )}
       <p className="hint">
-        일꾼은 매일 자동으로 일하며 <b>숙련도</b>가 오릅니다(효율 ↑). 일하면 <b>행복도</b>가 줄고,
-        지치면 스스로 <b>휴식</b>합니다. 급여를 못 주면 떠납니다.
+        일꾼은 매일 자동으로 일합니다. <b>골드로 훈련</b>하면 즉시 레벨업하고, 레벨이 높을수록 <b>효율이 크게</b> 오릅니다(레벨당 +30%).
+        일하면 <b>행복도</b>가 줄고 지치면 <b>휴식</b>하며, 급여를 못 주면 떠납니다.
         {housingFull && ' ⚠️ 주거가 가득 찼습니다 — 집(🏠)을 더 지으세요.'}
       </p>
 
@@ -121,7 +121,18 @@ export default function WorkersPanel({ state, derived, actions }) {
                     background: w.happiness > 60 ? '#6dd36d' : w.happiness > 30 ? '#f4c542' : '#e0604a',
                   }} />
                 </div>
-                <button className="btn-sm sell" onClick={() => actions.fireWorker(w.id)}>해고</button>
+                <div className="worker-btns">
+                  {xi.lvl < MAX_WORKER_LEVEL ? (
+                    <button className="btn-sm buy" disabled={state.money < trainCost(xi.lvl)}
+                      onClick={() => actions.trainWorker(w.id)}
+                      title={`골드로 즉시 레벨업 → Lv.${xi.lvl + 1} (효율 +${Math.round((levelMult(xi.lvl + 1) - 1) * 100)}%)`}>
+                      📈 훈련 Lv.{xi.lvl + 1} ({trainCost(xi.lvl)}G)
+                    </button>
+                  ) : (
+                    <span className="rest-note">최고 레벨 달성 ★</span>
+                  )}
+                  <button className="btn-sm sell" onClick={() => actions.fireWorker(w.id)}>해고</button>
+                </div>
               </div>
             );
           })}

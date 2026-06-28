@@ -39,6 +39,21 @@ const TOOLS = [
   { id: 'seeds', icon: '🌱', name: '씨앗' },
 ];
 
+// HUD 칩을 누르면 보여줄 상세 설명
+const INFO = {
+  money: { t: '💰 골드', b: '작물·생선·축산물·광물을 시장(또는 상인 NPC)에 팔아 법니다. 한 번에 많이 팔면 시세가 내려가니 여러 번 나눠 파는 게 이득이에요. 시장엔 판매 수수료가 있습니다.' },
+  wood: { t: '🪵 목재', b: '도끼(1번 도구)로 나무를 베어 모읍니다. 건설·제작의 기본 재료. 벤 나무는 3일 뒤 다시 자랍니다.' },
+  stone: { t: '🪨 돌', b: '곡괭이(2번 도구)로 바위를 캐서 모읍니다. 산에서는 철광석·마력수정도 나옵니다. 바위는 4일 뒤 다시 생깁니다.' },
+  pop: { t: '👥 인구', b: '행복도 60% 이상 + 식량 충분 + 주거 여유(집🏠으로 최대인구↑)이면 매일 늘어납니다. 행복도가 35% 아래면 떠납니다.' },
+  level: { t: '🎖️ 레벨 · 명성', b: '제작·전투·퀘스트·업적으로 플레이어 레벨과 명성이 오릅니다. 명성은 직위 승급에도 쓰입니다.' },
+  map: { t: '🗺️ 현재 지역', b: '도시·마을·들판·산을 오갑니다. 우측 상단 🌐(전체 지도)에서 한 번에 빠르게 이동할 수 있어요.' },
+  time: { t: '🕗 시간', b: '하루가 흐르면 생산·급여·세금·이벤트가 정산됩니다. 속도(⏸▶⏩)로 흐름을 조절하세요.' },
+  season: { t: '🌸 계절', b: '봄·여름·가을·겨울. 작물마다 심을 수 있는 계절이 다르고, 제철이 아니면 시세가 오릅니다.' },
+  weather: { t: '☀️ 날씨', b: '맑음·비·폭풍·가뭄이 작물 성장과 어획량에 영향을 줍니다. 폭풍엔 낚시가 잘 안 됩니다.' },
+  rank: { t: '🎖️ 직위', b: '인구·자산·영향력·건물 등을 모으면 자동 승급합니다. 평민 → … → 국왕. 촌장부터 장수·전쟁이 열립니다.' },
+  village: { t: '🏘️ 마을 레벨 · 등급', b: '건물·인구·명성·영향력으로 마을 점수가 오르며 레벨업합니다. 레벨이 오르면 새 건물이 해금되고 최대인구가 늘어요.' },
+};
+
 export default function GameCanvas({ state, derived, time, actions, onSave, slot, saveToSlot, loadFromSlot, newGameInSlot, slotTick }) {
   const w = useWorld({ state, time, actions });
   const [leftOpen, setLeftOpen] = useState(false);
@@ -47,6 +62,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
   const [win, setWin] = useState(null); // 'inv' | 'craft' | 'quest' | 'slots'
   const [classSkipped, setClassSkipped] = useState(false); // 이번 세션 직업선택 건너뜀
   const [worldOpen, setWorldOpen] = useState(false); // 전체 지도 오버레이
+  const [info, setInfo] = useState(null); // HUD 칩 상세 팝업
   // 새 게임(1일차 + 직업 미선택)일 때만 직업 선택 표시 — 기존 세이브는 영향 없음
   const showClassSelect = !classSkipped && state.day === 1 && (state.class == null || state.class === 'none');
   // 모달/창이 열려 있으면 월드 조작 UI(핫바·조이스틱·버튼)를 숨겨 겹침 방지(특히 모바일)
@@ -108,23 +124,23 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
         <canvas ref={w.canvasRef} onClick={w.onCanvasClick} onWheel={onWheel} />
       </div>
 
-      {/* 상단 좌: 자원 칩 */}
+      {/* 상단 좌: 자원 칩 (누르면 상세 설명) */}
       <div className="hud hud-tl">
-        <span className="hud-chip">💰 {fmt(Math.floor(state.money))}</span>
-        <span className="hud-chip">🪵 {fmt(state.wood)}</span>
-        <span className="hud-chip">🪨 {fmt(state.stone)}</span>
-        <span className="hud-chip">👥 {Math.floor(state.population)}/{derived.maxPop}</span>
-        <span className="hud-chip">{w.mapIcon} {w.mapName}</span>
-        <span className="hud-chip">🎖️ Lv.{state.level} · ⭐{fmt(state.fame)}</span>
+        <button className="hud-chip tappable" onClick={() => setInfo('money')}>💰 {fmt(Math.floor(state.money))}</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('wood')}>🪵 {fmt(state.wood)}</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('stone')}>🪨 {fmt(state.stone)}</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('pop')}>👥 {Math.floor(state.population)}/{derived.maxPop}</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('map')}>{w.mapIcon} {w.mapName}</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('level')}>🎖️ Lv.{state.level} · ⭐{fmt(state.fame)}</button>
       </div>
 
       {/* 상단 우: 시간/계절/날씨/직위 + 컨트롤 */}
       <div className="hud hud-tr">
-        <span className="hud-chip">{w.hud.night ? '🌙' : '☀️'} {w.hud.clock}</span>
-        <span className="hud-chip">{time.season.icon} {time.year}년차 {time.dayOfSeason}일</span>
-        <span className="hud-chip">{weather.icon}</span>
-        <span className="hud-chip">{rank.icon} {rank.name}</span>
-        <span className="hud-chip">🏘️ 마을 Lv.{state.villageLevel} · {derived.grade.name}</span>
+        <button className="hud-chip tappable" onClick={() => setInfo('time')}>{w.hud.night ? '🌙' : '☀️'} {w.hud.clock}</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('season')}>{time.season.icon} {time.year}년차 {time.dayOfSeason}일</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('weather')}>{weather.icon}</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('rank')}>{rank.icon} {rank.name}</button>
+        <button className="hud-chip tappable" onClick={() => setInfo('village')}>🏘️ 마을 Lv.{state.villageLevel} · {derived.grade.name}</button>
         <div className="hud-btns">
           {['pause', 'x1', 'x2'].map((s) => (
             <button key={s} className={'mini-btn' + (w.speedId === s ? ' on' : '')} onClick={() => w.setSpeedId(s)}>
@@ -264,6 +280,17 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
 
       {/* 진행 로그 토스트 */}
       {toast && <div className={'game-toast log-' + toast.kind}>{toast.text}</div>}
+
+      {/* HUD 칩 상세 설명 팝업 */}
+      {info && INFO[info] && (
+        <div className="info-pop-backdrop" onClick={() => setInfo(null)}>
+          <div className="info-pop" onClick={(e) => e.stopPropagation()}>
+            <h3 className="info-pop-title">{INFO[info].t}</h3>
+            <p className="info-pop-body">{INFO[info].b}</p>
+            <button className="mini-btn wide" onClick={() => setInfo(null)}>알겠어요</button>
+          </div>
+        </div>
+      )}
 
       {/* 모바일 조이스틱 + 액션 + 달리기 (창이 열려 있으면 숨김) */}
       {!overlayOpen && (
