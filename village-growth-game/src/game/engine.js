@@ -364,8 +364,8 @@ export function advanceDay(state) {
 
   // 5) 인구 변화
   let population = state.population;
-  if (happiness >= 60 && population < derived.maxPop && !foodShort) {
-    population += 0.05 + ((happiness - 60) / 40) * 0.15;
+  if (happiness >= 55 && population < derived.maxPop && !foodShort) {
+    population += 0.16 + ((happiness - 55) / 45) * 0.42; // 인구 증가 속도 상향
     population = Math.min(population, derived.maxPop);
   } else if (happiness < 35) {
     population = Math.max(0, population - 0.2);
