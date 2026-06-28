@@ -58,6 +58,7 @@ export function useGame() {
       hire: (job) => dispatch({ type: 'HIRE', job }),
       fireWorker: (id) => dispatch({ type: 'FIRE_WORKER', id }),
       trainWorker: (id) => dispatch({ type: 'TRAIN_WORKER', id }),
+      workerGather: (kind, amount, id) => dispatch({ type: 'WORKER_GATHER', kind, amount, id }),
       recruitGeneral: () => dispatch({ type: 'RECRUIT_GENERAL' }),
       dismissGeneral: (id) => dispatch({ type: 'DISMISS_GENERAL', id }),
       recruitTroop: (troop, qty) => dispatch({ type: 'RECRUIT_TROOP', troop, qty }),

@@ -252,7 +252,6 @@ export function advanceDay(state) {
   // 2.5) 일꾼 자동 노동 (개별 숙련도/행복도/휴식 + 자동 생산 + 연구 효율)
   const totalWorkers = state.workers.length;
   const weather = WEATHERS[pick.id];
-  const laborEff = 1 + state.research.admin * 0.05; // 행정 연구 → 노동 효율
   let woodGain = 0, stoneGain = 0, farmerCap = 0;
   const fishCatch = [];
   const nextWorkers = [];
@@ -265,15 +264,15 @@ export function advanceDay(state) {
       if (nw.happiness >= REST_BACK) nw.resting = false;
     } else {
       const mult = levelMult(levelFromXp(nw.xp));
-      if (w.job === 'lumberjack') woodGain += OUTPUT.lumberjackWood * mult * laborEff;
-      else if (w.job === 'miner') stoneGain += OUTPUT.minerStone * mult * laborEff;
-      else if (w.job === 'fisher') {
+      // 나무꾼·광부는 실시간으로 직접 채집(WORKER_GATHER)하므로 일일 정산에서 제외
+      if (w.job === 'fisher') {
         const c = Math.round((OUTPUT.fisherCatch + Math.floor(state.research.fishing / 2)) * mult);
         for (let i = 0; i < c; i++) fishCatch.push(1);
       } else if (w.job === 'farmer') farmerCap += OUTPUT.farmerPlots * mult;
-      // 숙련도 상승 + 피로
+      // 숙련도 상승(채집형은 입고 시 추가 경험치) + 피로
+      const gather = w.job === 'lumberjack' || w.job === 'miner';
       const before = levelFromXp(nw.xp);
-      nw.xp = nw.xp + 10;
+      nw.xp = nw.xp + (gather ? 4 : 10);
       if (levelFromXp(nw.xp) > before)
         log = pushLog(log, day, `⭐ ${nw.name}의 숙련도가 Lv.${levelFromXp(nw.xp)}로 올랐습니다.`, 'good');
       nw.happiness = Math.max(0, nw.happiness - WORK_FATIGUE);
