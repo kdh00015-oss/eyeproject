@@ -70,6 +70,14 @@ export function createInitialState() {
     // 고용한 일꾼 (개별 인물 배열)
     workers: [], // { id, name, job, xp, happiness, resting }
     nextWorkerId: 1,
+    // 플레이어 성장 + 통계 + 퀘스트
+    fame: 0,
+    exp: 0,
+    level: 1,
+    stats: { harvested: 0, fished: 0, built: 0, chopped: 0, mined: 0, crafted: 0 },
+    dailyBase: { harvested: 0, fished: 0, built: 0, chopped: 0, mined: 0, crafted: 0 },
+    claimed: [], // 보상 받은 퀘스트 id
+    equipped: [], // 장착한 장비 아이템 id
     // 월드: 벌목/채굴된 자연물(respawn 추적) + 배치한 장식물
     removed: [], // [{ key, type, day }]
     placed: [], // [{ type, x, y }]

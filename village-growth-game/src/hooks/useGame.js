@@ -1,28 +1,26 @@
-// 중앙 게임 훅: 상태(reducer) + 시간 진행 루프 + 저장/불러오기 + 행동 디스패치
+// 중앙 게임 훅: 상태(reducer) + 시간 진행 루프 + 저장/불러오기(슬롯) + 행동 디스패치
 
-import { useReducer, useEffect, useState, useCallback, useMemo } from 'react';
+import { useReducer, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { gameReducer } from '../game/reducer';
 import { createInitialState } from '../game/initialState';
 import { computeDerived, seasonInfo } from '../game/engine';
-import { loadGame, saveGame } from '../game/storage';
+import { loadCurrent, loadSlot, saveSlot, setCurrentSlot } from '../game/storage';
 
-// 재생 속도 (ms per day)
 export const SPEEDS = [
   { id: 'pause', label: '⏸ 정지', ms: 0 },
   { id: 'x1', label: '▶ 1배속', ms: 2000 },
   { id: 'x2', label: '⏩ 2배속', ms: 1000 },
-  { id: 'x3', label: '⏭ 3배속', ms: 450 },
 ];
 
-function init() {
-  return loadGame() || createInitialState();
-}
+const boot = loadCurrent();
 
 export function useGame() {
-  const [state, dispatch] = useReducer(gameReducer, undefined, init);
+  const [state, dispatch] = useReducer(gameReducer, undefined, () => boot.state);
   const [speedId, setSpeedId] = useState('pause');
+  const [slot, setSlot] = useState(boot.slot);
+  const slotRef = useRef(slot); slotRef.current = slot;
+  const [slotTick, setSlotTick] = useState(0); // 슬롯 메타 갱신 트리거
 
-  // 시간 진행 루프
   const speed = SPEEDS.find((s) => s.id === speedId);
   useEffect(() => {
     if (!speed || speed.ms === 0) return undefined;
@@ -30,16 +28,12 @@ export function useGame() {
     return () => clearInterval(id);
   }, [speed]);
 
-  // 자동 저장 (상태 변화 시)
-  useEffect(() => {
-    saveGame(state);
-  }, [state]);
+  // 현재 슬롯에 자동 저장
+  useEffect(() => { saveSlot(state, slotRef.current); }, [state]);
 
-  // 파생 통계 / 시간 정보 (state 변화 시 재계산)
   const derived = useMemo(() => computeDerived(state), [state]);
   const time = useMemo(() => seasonInfo(state.day), [state.day]);
 
-  // 행동 헬퍼들
   const actions = useMemo(
     () => ({
       nextDay: () => dispatch({ type: 'NEXT_DAY' }),
@@ -60,13 +54,29 @@ export function useGame() {
       openTrade: (villageId) => dispatch({ type: 'OPEN_TRADE', villageId }),
       hire: (job) => dispatch({ type: 'HIRE', job }),
       fireWorker: (id) => dispatch({ type: 'FIRE_WORKER', id }),
+      craft: (id) => dispatch({ type: 'CRAFT', id }),
+      useItem: (id) => dispatch({ type: 'USE_ITEM', id }),
+      equip: (id) => dispatch({ type: 'EQUIP', id }),
+      claimQuest: (id) => dispatch({ type: 'CLAIM_QUEST', id }),
       setTax: (rate) => dispatch({ type: 'SET_TAX', rate }),
       newGame: () => dispatch({ type: 'NEW_GAME' }),
     }),
     []
   );
 
-  const save = useCallback(() => saveGame(state), [state]);
+  // 슬롯 저장/불러오기
+  const saveToSlot = useCallback((i) => { saveSlot(state, i); setSlot(i); setSlotTick((t) => t + 1); }, [state]);
+  const loadFromSlot = useCallback((i) => {
+    const s = loadSlot(i);
+    if (s) { dispatch({ type: 'LOAD', state: s }); setSlot(i); setCurrentSlot(i); }
+  }, []);
+  const newGameInSlot = useCallback((i) => {
+    const fresh = createInitialState();
+    dispatch({ type: 'LOAD', state: fresh });
+    saveSlot(fresh, i); setSlot(i); setSlotTick((t) => t + 1);
+  }, []);
 
-  return { state, derived, time, actions, speedId, setSpeedId, save };
+  const save = useCallback(() => { saveSlot(state, slotRef.current); setSlotTick((t) => t + 1); }, [state]);
+
+  return { state, derived, time, actions, speedId, setSpeedId, save, slot, saveToSlot, loadFromSlot, newGameInSlot, slotTick };
 }

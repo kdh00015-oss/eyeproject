@@ -13,6 +13,24 @@ import { ANIMALS } from './livestock';
 import { BUILDINGS, buildingCost } from './buildings';
 import { RESEARCH_FIELDS, researchCost, MAX_RESEARCH_LEVEL } from './research';
 import { JOBS, randomName } from './workers';
+import { RECIPES, itemCount } from './crafting';
+import { QUESTS, questProgress } from './quests';
+import { itemDef } from './items';
+
+// 경험치 → 레벨 (다음 레벨까지 level*100 필요)
+function levelFromExp(exp) {
+  let l = 1, need = 100, e = exp;
+  while (e >= need) { e -= need; l += 1; need = l * 100; }
+  return l;
+}
+// 아이템 지급 (wood/stone 은 자원 필드, 그 외는 인벤토리) — state 부분 갱신 반환
+function grantItems(patch, base, items) {
+  for (const it of items || []) {
+    if (it.id === 'wood') patch.wood = (patch.wood ?? base.wood) + it.qty;
+    else if (it.id === 'stone') patch.stone = (patch.stone ?? base.stone) + it.qty;
+    else { patch.inventory = patch.inventory || { ...base.inventory }; patch.inventory[it.id] = (patch.inventory[it.id] || 0) + it.qty; }
+  }
+}
 import { WEATHERS } from './constants';
 import {
   FARM_PLOTS_MAX,
@@ -74,6 +92,7 @@ export function gameReducer(state, action) {
         ...state,
         farm,
         inventory,
+        stats: { ...state.stats, harvested: state.stats.harvested + qty },
         log: log(state, `🌾 ${crop.name} ${qty}개를 수확했습니다.`, 'good'),
       };
     }
@@ -126,6 +145,7 @@ export function gameReducer(state, action) {
         ...state,
         inventory,
         fishUsed: state.fishUsed + 1,
+        stats: { ...state.stats, fished: state.stats.fished + 1 },
         log: log(
           state,
           `🐟 ${spot.name}에서 ${caught.name}${caught.rare ? ' (희귀!)' : ''}을(를) 낚았습니다.`,
@@ -218,6 +238,7 @@ export function gameReducer(state, action) {
         ...state,
         money: state.money - cost,
         buildings,
+        stats: { ...state.stats, built: state.stats.built + (level === 0 ? 1 : 0) },
         log: log(state, `${b.icon} ${b.name}을(를) Lv.${level + 1}로 ${verb}했습니다.`, 'good'),
       };
     }
@@ -292,22 +313,26 @@ export function gameReducer(state, action) {
 
     // --- 월드: 도구 행동 ---
     case 'CHOP': {
-      // 나무 벌목 → 나무 자원
-      const gain = 2 + Math.floor(Math.random() * 2);
+      // 나무 벌목 → 나무 자원 (강화 도끼 장착 시 +2)
+      const bonus = state.equipped.includes('sturdyAxe') ? 2 : 0;
+      const gain = 2 + Math.floor(Math.random() * 2) + bonus;
       return {
         ...state,
         wood: state.wood + gain,
         removed: [...state.removed, { key: action.key, type: 'tree', day: state.day }],
+        stats: { ...state.stats, chopped: state.stats.chopped + 1 },
         log: log(state, `🪓 나무를 베어 목재 ${gain}개를 얻었습니다.`, 'good'),
       };
     }
     case 'MINE': {
-      // 바위 채굴 → 돌 자원
-      const gain = 1 + Math.floor(Math.random() * 2);
+      // 바위 채굴 → 돌 자원 (강화 곡괭이 장착 시 +2)
+      const bonus = state.equipped.includes('sturdyPick') ? 2 : 0;
+      const gain = 1 + Math.floor(Math.random() * 2) + bonus;
       return {
         ...state,
         stone: state.stone + gain,
         removed: [...state.removed, { key: action.key, type: 'rock', day: state.day }],
+        stats: { ...state.stats, mined: state.stats.mined + 1 },
         log: log(state, `⛏️ 바위를 캐서 돌 ${gain}개를 얻었습니다.`, 'good'),
       };
     }
@@ -353,6 +378,69 @@ export function gameReducer(state, action) {
         workers: state.workers.filter((x) => x.id !== action.id),
         log: log(state, `${JOBS[w.job].name} '${w.name}'을(를) 해고했습니다.`, 'info'),
       };
+    }
+
+    // --- 제작 ---
+    case 'CRAFT': {
+      const recipe = RECIPES.find((r) => r.id === action.id);
+      if (!recipe) return state;
+      if (!recipe.inputs.every((i) => itemCount(state, i.id) >= i.qty)) {
+        return { ...state, log: log(state, '재료가 부족합니다.', 'warn') };
+      }
+      const patch = { inventory: { ...state.inventory } };
+      for (const i of recipe.inputs) {
+        if (i.id === 'wood') patch.wood = (patch.wood ?? state.wood) - i.qty;
+        else if (i.id === 'stone') patch.stone = (patch.stone ?? state.stone) - i.qty;
+        else patch.inventory[i.id] = (patch.inventory[i.id] || 0) - i.qty;
+      }
+      grantItems(patch, state, [recipe.out]);
+      const exp = state.exp + 5;
+      const out = itemDef(recipe.out.id);
+      return {
+        ...state, ...patch,
+        exp, level: levelFromExp(exp),
+        stats: { ...state.stats, crafted: state.stats.crafted + 1 },
+        log: log(state, `⚒️ ${out.name}을(를) 제작했습니다.`, 'good'),
+      };
+    }
+
+    // --- 아이템 사용/장착 ---
+    case 'USE_ITEM': {
+      const def = itemDef(action.id);
+      if (def.category !== 'consumable' || (state.inventory[action.id] || 0) <= 0) return state;
+      const inventory = { ...state.inventory, [action.id]: state.inventory[action.id] - 1 };
+      const happiness = clamp(state.happiness + (def.effect?.happiness || 0), 0, 100);
+      return { ...state, inventory, happiness, log: log(state, `${def.icon} ${def.name}을(를) 사용했습니다.`, 'good') };
+    }
+    case 'EQUIP': {
+      const def = itemDef(action.id);
+      if (def.category !== 'equipment') return state;
+      const has = state.equipped.includes(action.id);
+      if (!has && (state.inventory[action.id] || 0) <= 0) return state;
+      const equipped = has ? state.equipped.filter((x) => x !== action.id) : [...state.equipped, action.id];
+      return { ...state, equipped, log: log(state, `${def.icon} ${def.name} ${has ? '해제' : '장착'}.`, 'info') };
+    }
+
+    // --- 퀘스트 보상 수령 ---
+    case 'CLAIM_QUEST': {
+      const q = QUESTS.find((x) => x.id === action.id);
+      if (!q || state.claimed.includes(q.id)) return state;
+      const prog = questProgress(state, null, q);
+      if (!prog.done) return state;
+      const patch = {};
+      grantItems(patch, state, q.reward.items);
+      const exp = state.exp + (q.reward.exp || 0);
+      const lvlBefore = state.level;
+      const next = {
+        ...state, ...patch,
+        money: state.money + (q.reward.gold || 0),
+        fame: state.fame + (q.reward.fame || 0),
+        exp, level: levelFromExp(exp),
+        claimed: [...state.claimed, q.id],
+        log: log(state, `🏅 퀘스트 완료: ${q.name}! 보상을 받았습니다.`, 'good'),
+      };
+      if (next.level > lvlBefore) next.log = [{ day: state.day, text: `🆙 레벨업! 플레이어 레벨 ${next.level} 달성!`, kind: 'good' }, ...next.log].slice(0, 60);
+      return next;
     }
 
     // --- 행정 ---

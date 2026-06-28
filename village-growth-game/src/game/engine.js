@@ -118,6 +118,10 @@ export function advanceDay(state) {
   const RESPAWN = { tree: 8, rock: 12 };
   next.removed = state.removed.filter((r) => day - r.day < (RESPAWN[r.type] || 8));
 
+  // 일일 퀘스트 리셋: 당일 기준치 갱신 + 일일(d로 시작) 보상기록 초기화
+  next.dailyBase = { ...state.stats };
+  next.claimed = state.claimed.filter((id) => !id.startsWith('d'));
+
   const { season } = seasonInfo(day);
   const derived = computeDerived(state);
 
