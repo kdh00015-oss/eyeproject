@@ -2,12 +2,16 @@
 
 import { GOODS } from '../game/goods';
 import { fmt } from '../game/util';
+import { SKILLS, skillLevel, skillBonus } from '../game/skills';
+import { CLASSES } from '../game/classes';
 
 export default function ResourcePanel({ state, derived }) {
   // 보유 중인(1개 이상) 재화만 표시
   const owned = Object.values(GOODS)
     .filter((g) => (state.inventory[g.id] || 0) > 0)
     .map((g) => ({ ...g, qty: state.inventory[g.id] }));
+  const cls = CLASSES[state.class];
+  const skills = state.skills || {};
 
   return (
     <aside className="panel resource-panel">
@@ -40,6 +44,22 @@ export default function ResourcePanel({ state, derived }) {
           }}
         />
       </div>
+
+      <h3 className="sub-title">🧭 생활 스킬{cls ? ` · ${cls.icon} ${cls.name}` : ''}</h3>
+      <ul className="skill-list">
+        {SKILLS.map((sk) => {
+          const xp = skills[sk.id] || 0;
+          const lv = skillLevel(xp);
+          const pct = lv >= 100 ? 100 : Math.round(((xp % 120) / 120) * 100);
+          return (
+            <li key={sk.id} className="skill-row" title={`${sk.name} Lv.${lv} · 보너스 +${Math.round((skillBonus(xp) - 1) * 100)}%`}>
+              <span className="skill-name">{sk.icon} {sk.name}</span>
+              <span className="skill-bar"><span className="skill-fill" style={{ width: `${pct}%` }} /></span>
+              <span className="skill-lv">Lv.{lv}</span>
+            </li>
+          );
+        })}
+      </ul>
 
       <h3 className="sub-title">🎒 보유 재화</h3>
       {owned.length === 0 ? (

@@ -24,7 +24,13 @@ import {
 } from './workers';
 import { placedEffects } from './world/worldgen';
 import { armyUpkeep } from './military';
+import { cbonus } from './classes';
 import { clamp, weightedPick } from './util';
+
+// 생선류 재화 id (어부 판매 보너스 적용 대상)
+const FISH_GOODS = new Set(
+  Object.values(FISHING_SPOTS).flatMap((s) => s.fish.map((f) => f.id))
+);
 
 // 마을 레벨 임계 점수 (index = level-1)
 export const VILLAGE_LEVEL_SCORE = [0, 25, 60, 110, 180, 280, 400, 560];
@@ -106,7 +112,10 @@ export function computeDerived(state) {
 export function sellPrice(state, goodId, derived) {
   const d = derived || computeDerived(state);
   const base = state.prices[goodId] ?? GOODS[goodId].basePrice;
-  return Math.max(1, Math.round(base * d.sellMult));
+  const cb = cbonus(state);
+  // 상인: 모든 판매가 +6%, 어부: 생선 판매가 +10%
+  const classMult = cb.sell * (FISH_GOODS.has(goodId) ? cb.fishSell : 1);
+  return Math.max(1, Math.round(base * d.sellMult * classMult));
 }
 
 // 직위 승급 조건 충족 여부
@@ -161,7 +170,7 @@ export function advanceDay(state) {
   for (const w of state.workers)
     if (w.job === 'rancher' && !w.resting)
       rancherFactor += OUTPUT.rancherBonus * levelMult(levelFromXp(w.xp));
-  const livestockBonus = (1 + state.research.livestock * 0.1) * rancherFactor;
+  const livestockBonus = (1 + state.research.livestock * 0.1) * rancherFactor * cbonus(state).livestock;
   let feedShort = false;
   for (const [id, animal] of Object.entries(ANIMALS)) {
     const cell = state.livestock[id];

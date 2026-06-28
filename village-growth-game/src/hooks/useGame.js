@@ -68,7 +68,7 @@ export function useGame() {
       combatResult: (payload) => dispatch({ type: 'COMBAT_RESULT', ...payload }),
       claimQuest: (id) => dispatch({ type: 'CLAIM_QUEST', id }),
       setTax: (rate) => dispatch({ type: 'SET_TAX', rate }),
-      newGame: () => dispatch({ type: 'NEW_GAME' }),
+      newGame: (cls) => dispatch({ type: 'NEW_GAME', class: cls }),
     }),
     []
   );
@@ -79,8 +79,8 @@ export function useGame() {
     const s = loadSlot(i);
     if (s) { dispatch({ type: 'LOAD', state: s }); setSlot(i); setCurrentSlot(i); }
   }, []);
-  const newGameInSlot = useCallback((i) => {
-    const fresh = createInitialState();
+  const newGameInSlot = useCallback((i, cls) => {
+    const fresh = createInitialState(cls);
     dispatch({ type: 'LOAD', state: fresh });
     saveSlot(fresh, i); setSlot(i); setSlotTick((t) => t + 1);
   }, []);

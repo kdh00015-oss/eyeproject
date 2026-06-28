@@ -22,6 +22,20 @@ import {
   WAR_UNLOCK_RANK, GENERAL_COST, TROOPS, TROOP_LIST,
   rollGeneral, armyPower, troopCount, villageDefense,
 } from './military';
+import { skillLevel } from './skills';
+import { cbonus } from './classes';
+
+// 스킬 경험치 가산 → 갱신된 skills 객체 반환 (레벨업 시 로그용 정보 포함)
+function addSkillXp(state, skillId, amount) {
+  const cur = (state.skills && state.skills[skillId]) || 0;
+  const before = skillLevel(cur);
+  const next = cur + amount;
+  const after = skillLevel(next);
+  return {
+    skills: { ...state.skills, [skillId]: next },
+    leveledUp: after > before ? after : 0,
+  };
+}
 
 // 경험치 → 레벨 (다음 레벨까지 level*100 필요)
 function levelFromExp(exp) {
@@ -54,7 +68,7 @@ function log(state, text, kind = 'info') {
 export function gameReducer(state, action) {
   switch (action.type) {
     case 'NEW_GAME':
-      return createInitialState();
+      return createInitialState(action.class);
 
     case 'LOAD':
       return action.state;
@@ -84,21 +98,27 @@ export function gameReducer(state, action) {
       const plot = state.farm[plotIndex];
       if (!plot) return state;
       const crop = CROPS[plot.cropId];
-      if (state.day - plot.plantedDay < crop.growthDays) return state;
-      // 수확량 = 기본 × 날씨 × 농업연구
+      // 농부 직업: 작물 성장이 빠름(필요 일수 감소)
+      const cb = cbonus(state);
+      const needDays = Math.max(1, Math.ceil(crop.growthDays * cb.cropGrow));
+      if (state.day - plot.plantedDay < needDays) return state;
+      // 수확량 = 기본 × 날씨 × 농업연구 × 농업스킬
       const weather = WEATHERS[state.weather];
       const agri = 1 + state.research.agriculture * 0.1;
-      const qty = Math.max(1, Math.round(crop.yield * weather.crop * agri));
+      const sk = 1 + (skillLevel((state.skills && state.skills.farming) || 0) - 1) * 0.005;
+      const qty = Math.max(1, Math.round(crop.yield * weather.crop * agri * sk));
       const farm = state.farm.slice();
       farm[plotIndex] = null;
       const inventory = { ...state.inventory };
       inventory[crop.id] = (inventory[crop.id] || 0) + qty;
+      const xp = addSkillXp(state, 'farming', 8 + qty);
       return {
         ...state,
         farm,
         inventory,
+        skills: xp.skills,
         stats: { ...state.stats, harvested: state.stats.harvested + qty },
-        log: log(state, `🌾 ${crop.name} ${qty}개를 수확했습니다.`, 'good'),
+        log: log(state, `🌾 ${crop.name} ${qty}개를 수확했습니다.${xp.leveledUp ? ` (농업 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
       };
     }
 
@@ -142,13 +162,15 @@ export function gameReducer(state, action) {
       }
       const inventory = { ...state.inventory };
       inventory[caught.id] = (inventory[caught.id] || 0) + 1;
+      const xp = addSkillXp(state, 'fishing', caught.rare ? 20 : 9);
       return {
         ...state,
         inventory,
+        skills: xp.skills,
         stats: { ...state.stats, fished: state.stats.fished + 1 },
         log: log(
           state,
-          `🐟 ${spot.name}에서 ${caught.name}${caught.rare ? ' (희귀!)' : ''}을(를) 낚았습니다.`,
+          `🐟 ${spot.name}에서 ${caught.name}${caught.rare ? ' (희귀!)' : ''}을(를) 낚았습니다.${xp.leveledUp ? ` (어업 Lv.${xp.leveledUp}!)` : ''}`,
           caught.rare ? 'good' : 'info'
         ),
       };
@@ -157,7 +179,8 @@ export function gameReducer(state, action) {
     // --- 축산 ---
     case 'BUY_ANIMAL': {
       const animal = ANIMALS[action.animalId];
-      if (state.money < animal.buyCost) {
+      const cost = Math.round(animal.buyCost * cbonus(state).buy);
+      if (state.money < cost) {
         return { ...state, log: log(state, '골드가 부족합니다.', 'warn') };
       }
       const livestock = {
@@ -169,7 +192,7 @@ export function gameReducer(state, action) {
       };
       return {
         ...state,
-        money: state.money - animal.buyCost,
+        money: state.money - cost,
         livestock,
         log: log(state, `${animal.icon} ${animal.name}을(를) 구입했습니다.`, 'good'),
       };
@@ -200,17 +223,19 @@ export function gameReducer(state, action) {
       if (sellQty <= 0) return state;
       const price = sellPrice(state, goodId);
       const inventory = { ...state.inventory, [goodId]: have - sellQty };
+      const xp = addSkillXp(state, 'trade', 4 + sellQty);
       return {
         ...state,
         inventory,
         money: state.money + price * sellQty,
-        log: log(state, `💰 ${goodId} ${sellQty}개를 ${price * sellQty}골드에 판매.`, 'good'),
+        skills: xp.skills,
+        log: log(state, `💰 ${goodId} ${sellQty}개를 ${price * sellQty}골드에 판매.${xp.leveledUp ? ` (상업 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
       };
     }
 
     case 'BUY_FEED': {
       const qty = action.qty || 10;
-      const cost = qty * 2;
+      const cost = Math.max(1, Math.round(qty * 2 * cbonus(state).buy));
       if (state.money < cost) {
         return { ...state, log: log(state, '골드가 부족합니다.', 'warn') };
       }
@@ -313,27 +338,33 @@ export function gameReducer(state, action) {
 
     // --- 월드: 도구 행동 ---
     case 'CHOP': {
-      // 나무 벌목 → 나무 자원 (강화 도끼 장착 시 +2)
-      const bonus = state.gear.tool?.id === 'sturdyAxe' ? 2 : 0;
+      // 나무 벌목 → 나무 자원 (강화 도끼 장착 시 +2, 채집꾼 직업 +1)
+      const cb = cbonus(state);
+      const bonus = (state.gear.tool?.id === 'sturdyAxe' ? 2 : 0) + cb.chop;
       const gain = 2 + Math.floor(Math.random() * 2) + bonus;
+      const xp = addSkillXp(state, 'foraging', 7 + gain);
       return {
         ...state,
         wood: state.wood + gain,
+        skills: xp.skills,
         removed: [...state.removed, { key: action.key, type: 'tree', day: state.day }],
         stats: { ...state.stats, chopped: state.stats.chopped + 1 },
-        log: log(state, `🪓 나무를 베어 목재 ${gain}개를 얻었습니다.`, 'good'),
+        log: log(state, `🪓 나무를 베어 목재 ${gain}개를 얻었습니다.${xp.leveledUp ? ` (벌목 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
       };
     }
     case 'MINE': {
-      // 바위 채굴 → 돌 자원 (강화 곡괭이 장착 시 +2)
-      const bonus = state.gear.tool?.id === 'sturdyPick' ? 2 : 0;
+      // 바위 채굴 → 돌 자원 (강화 곡괭이 장착 시 +2, 채집꾼 직업 +1)
+      const cb = cbonus(state);
+      const bonus = (state.gear.tool?.id === 'sturdyPick' ? 2 : 0) + cb.mine;
       const gain = 1 + Math.floor(Math.random() * 2) + bonus;
+      const xp = addSkillXp(state, 'mining', 7 + gain);
       return {
         ...state,
         stone: state.stone + gain,
+        skills: xp.skills,
         removed: [...state.removed, { key: action.key, type: 'rock', day: state.day }],
         stats: { ...state.stats, mined: state.stats.mined + 1 },
-        log: log(state, `⛏️ 바위를 캐서 돌 ${gain}개를 얻었습니다.`, 'good'),
+        log: log(state, `⛏️ 바위를 캐서 돌 ${gain}개를 얻었습니다.${xp.leveledUp ? ` (채광 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
       };
     }
     case 'PLACE': {
@@ -405,11 +436,13 @@ export function gameReducer(state, action) {
       grantItems(patch, state, [recipe.out]);
       const exp = state.exp + 5;
       const out = itemDef(recipe.out.id);
+      const xp = addSkillXp(state, 'crafting', 12);
       return {
         ...state, ...patch,
         exp, level: levelFromExp(exp),
+        skills: xp.skills,
         stats: { ...state.stats, crafted: state.stats.crafted + 1 },
-        log: log(state, `⚒️ ${out.name}을(를) 제작했습니다.`, 'good'),
+        log: log(state, `⚒️ ${out.name}을(를) 제작했습니다.${xp.leveledUp ? ` (제작 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
       };
     }
 
@@ -472,11 +505,13 @@ export function gameReducer(state, action) {
       for (const sl of ['weapon', 'armor']) {
         if (gear[sl] && gear[sl].dur > 0) gear[sl] = { ...gear[sl], dur: Math.max(0, gear[sl].dur - (durLoss || 0)) };
       }
+      const xp = addSkillXp(state, 'combat', 14);
       return {
         ...state, ...patch, gear,
         money: state.money + (gold || 0),
         exp: e, level: levelFromExp(e),
-        log: log(state, `⚔️ ${label} 처치! 보상을 획득했습니다.`, 'good'),
+        skills: xp.skills,
+        log: log(state, `⚔️ ${label} 처치! 보상을 획득했습니다.${xp.leveledUp ? ` (전투 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
       };
     }
 

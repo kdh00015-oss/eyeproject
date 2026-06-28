@@ -11,8 +11,10 @@ import { ANIMALS } from './livestock';
 import { RESEARCH_FIELDS } from './research';
 import { BUILDINGS } from './buildings';
 import { GOODS } from './goods';
+import { emptySkills } from './skills';
+import { applyClass } from './classes';
 
-export function createInitialState() {
+export function createInitialState(classId) {
   // 밭: 각 칸은 비어있음(null) 또는 { cropId, plantedDay }
   const farm = Array(FARM_PLOTS_START).fill(null);
 
@@ -46,7 +48,7 @@ export function createInitialState() {
   const prices = {};
   for (const g of Object.values(GOODS)) prices[g.id] = g.basePrice;
 
-  return {
+  const state = {
     // 시간
     day: 1, // 누적 일수 (1부터)
     // 자산/주민
@@ -90,6 +92,10 @@ export function createInitialState() {
     // 월드: 벌목/채굴된 자연물(respawn 추적) + 배치한 장식물
     removed: [], // [{ key, type, day }]
     placed: [], // [{ type, x, y }]
+    // 생활 스킬 (분야별 경험치)
+    skills: emptySkills(),
+    // 시작 직업 (applyClass에서 설정)
+    class: 'none',
     // 하루 행동 제한
     fishUsed: 0,
     // 날씨 (advanceDay 첫 호출 전 기본값)
@@ -97,4 +103,5 @@ export function createInitialState() {
     // 진행 로그
     log: [{ day: 1, text: '🌅 새로운 마을 생활을 시작합니다!', kind: 'info' }],
   };
+  return applyClass(state, classId);
 }

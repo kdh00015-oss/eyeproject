@@ -22,6 +22,7 @@ import QuestWindow from './windows/QuestWindow';
 import HuntWindow from './windows/HuntWindow';
 import MilitaryWindow from './windows/MilitaryWindow';
 import SaveSlots from './windows/SaveSlots';
+import ClassSelect from './windows/ClassSelect';
 
 const PANELS = {
   fishing: FishingPanel, livestock: LivestockPanel, build: BuildPanel,
@@ -40,6 +41,9 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
   const [rightOpen, setRightOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [win, setWin] = useState(null); // 'inv' | 'craft' | 'quest' | 'slots'
+  const [classSkipped, setClassSkipped] = useState(false); // 이번 세션 직업선택 건너뜀
+  // 새 게임(1일차 + 직업 미선택)일 때만 직업 선택 표시 — 기존 세이브는 영향 없음
+  const showClassSelect = !classSkipped && state.day === 1 && (state.class == null || state.class === 'none');
 
   // 단축키로 창 열기 (이동키와 충돌 없음)
   useEffect(() => {
@@ -62,7 +66,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
     quest: { title: '퀘스트', icon: '📜', el: <QuestWindow state={state} derived={derived} actions={actions} /> },
     hunt: { title: '사냥', icon: '⚔️', el: <HuntWindow state={state} actions={actions} /> },
     war: { title: '군사·전쟁', icon: '🏰', el: <MilitaryWindow state={state} actions={actions} /> },
-    slots: { title: '세이브 슬롯', icon: '💾', el: <SaveSlots current={slot} slotTick={slotTick} onSave={saveToSlot} onLoad={loadFromSlot} onNew={newGameInSlot} /> },
+    slots: { title: '세이브 슬롯', icon: '💾', el: <SaveSlots current={slot} slotTick={slotTick} onSave={saveToSlot} onLoad={loadFromSlot} onNew={(i, cls) => { newGameInSlot(i, cls); setClassSkipped(false); }} /> },
   };
 
   // 최신 진행 로그를 토스트로 표시
@@ -234,6 +238,14 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
         <Modal title={WINDOWS[win].title} icon={WINDOWS[win].icon} onClose={() => setWin(null)}>
           {WINDOWS[win].el}
         </Modal>
+      )}
+
+      {/* 시작 직업 선택 */}
+      {showClassSelect && (
+        <ClassSelect
+          onPick={(cls) => { actions.newGame(cls); setClassSkipped(true); }}
+          onSkip={() => setClassSkipped(true)}
+        />
       )}
 
       {/* NPC 대화/거래 */}
