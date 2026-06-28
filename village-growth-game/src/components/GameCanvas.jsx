@@ -49,6 +49,8 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
   const [worldOpen, setWorldOpen] = useState(false); // 전체 지도 오버레이
   // 새 게임(1일차 + 직업 미선택)일 때만 직업 선택 표시 — 기존 세이브는 영향 없음
   const showClassSelect = !classSkipped && state.day === 1 && (state.class == null || state.class === 'none');
+  // 모달/창이 열려 있으면 월드 조작 UI(핫바·조이스틱·버튼)를 숨겨 겹침 방지(특히 모바일)
+  const overlayOpen = !!(win || worldOpen || showClassSelect || w.activeBuilding || w.talkNpc);
 
   // 단축키로 창 열기 (이동키와 충돌 없음)
   useEffect(() => {
@@ -185,6 +187,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
       })() : null}
 
       {/* 핫바 (도구 + 씨앗 작물 + 배치) */}
+      {!overlayOpen && (
       <div className="hotbar">
         {TOOLS.map((t, i) => (
           <button
@@ -234,19 +237,24 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
           })}
         </div>
       </div>
+      )}
 
       {/* 진행 로그 토스트 */}
       {toast && <div className={'game-toast log-' + toast.kind}>{toast.text}</div>}
 
-      {/* 모바일 조이스틱 + 액션 + 달리기 */}
-      <Joystick joy={w.joy} />
-      <button className="action-btn" onClick={w.interactFront} aria-label="행동">✋</button>
-      <button
-        className={'run-btn' + (w.run ? ' on' : '')}
-        onClick={() => w.setRun((v) => !v)}
-        title="빠른 달리기 (PC: Shift)"
-        aria-label="달리기"
-      >🏃</button>
+      {/* 모바일 조이스틱 + 액션 + 달리기 (창이 열려 있으면 숨김) */}
+      {!overlayOpen && (
+        <>
+          <Joystick joy={w.joy} />
+          <button className="action-btn" onClick={w.interactFront} aria-label="행동">✋</button>
+          <button
+            className={'run-btn' + (w.run ? ' on' : '')}
+            onClick={() => w.setRun((v) => !v)}
+            title="빠른 달리기 (PC: Shift)"
+            aria-label="달리기"
+          >🏃</button>
+        </>
+      )}
 
       {/* 건물 진입 모달 */}
       {w.activeBuilding && ActivePanel && (
