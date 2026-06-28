@@ -827,3 +827,9 @@
 /* ---- 밭 개간 버튼(씨앗 핫바) ---- */
 .seed.reclaim { width: auto; padding: 0 8px; font-size: 12px; font-weight: 700; background: rgba(150,110,60,0.35); border-color: rgba(200,160,90,0.6); white-space: nowrap; }
 .seed.reclaim:disabled { opacity: 0.45; }
+
+/* ---- 일꾼 경험치 바 ---- */
+.xp-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.xp-bar { flex: 1; height: 7px; border-radius: 4px; background: rgba(0,0,0,0.2); overflow: hidden; }
+.xp-fill { display: block; height: 100%; background: linear-gradient(90deg, #f4c542, #f08a3b); }
+.xp-text { font-size: 11px; opacity: 0.82; white-space: nowrap; }

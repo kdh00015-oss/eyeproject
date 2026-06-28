@@ -7,6 +7,7 @@ import {
 } from '../game/world/draw';
 import { paletteFor, ambientOverlay, isNight, clockString } from '../game/world/palette';
 import { CROPS } from '../game/crops';
+import { ANIMAL_LIST } from '../game/livestock';
 import { JOBS, JOB_SITE } from '../game/workers';
 
 const DAY_REAL_SEC = 240; // 하루를 더 느리게 (체감 시간 ↑)
@@ -419,6 +420,43 @@ export function useWorld({ state, time, actions }) {
           ctx.font = `${Math.round(tileSize * 0.42)}px sans-serif`; ctx.textAlign = 'center';
           ctx.fillText('🔒', dx + tileSize / 2, dy + tileSize * 0.66); ctx.textAlign = 'left';
         } });
+      }
+    }
+
+    // 가축 방목장: 울타리 + 보유 가축 표시
+    if (M.PASTURE) {
+      const P = M.PASTURE;
+      // 울타리 외곽 + 라벨 (동물보다 뒤에 그림)
+      sprites.push({ y: P.y - 0.1, fn: () => {
+        const dx = P.x * tileSize - camX, dy = P.y * tileSize - camY;
+        const w2 = P.w * tileSize, h2 = P.h * tileSize;
+        ctx.strokeStyle = '#9c6b3a'; ctx.lineWidth = Math.max(2, tileSize * 0.09);
+        ctx.setLineDash([tileSize * 0.5, tileSize * 0.28]);
+        ctx.strokeRect(dx + 2, dy + 2, w2 - 4, h2 - 4);
+        ctx.setLineDash([]);
+        ctx.font = `bold ${Math.round(tileSize * 0.4)}px sans-serif`; ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(20,26,38,0.85)';
+        const lbl = '🐄 가축장'; const lw = ctx.measureText(lbl).width + 10;
+        ctx.fillRect(dx + w2 / 2 - lw / 2, dy - tileSize * 0.5, lw, tileSize * 0.42);
+        ctx.fillStyle = '#ffe9b0'; ctx.fillText(lbl, dx + w2 / 2, dy - tileSize * 0.18);
+        ctx.textAlign = 'left';
+      } });
+      // 보유 가축을 펜 안에 배치 (펜 용량만큼만 표시)
+      const cap = P.w * P.h;
+      let slot = 0;
+      for (const a of ANIMAL_LIST) {
+        const cnt = (st.livestock[a.id] && st.livestock[a.id].count) || 0;
+        for (let k = 0; k < cnt && slot < cap; k++, slot++) {
+          const ax = P.x + (slot % P.w) + 0.5;
+          const ay = P.y + Math.floor(slot / P.w) + 0.55;
+          const ic = a.icon;
+          sprites.push({ y: ay, fn: () => {
+            const bob = Math.sin(now / 380 + slot * 1.7) * tileSize * 0.05;
+            ctx.font = `${Math.round(tileSize * 0.5)}px sans-serif`; ctx.textAlign = 'center';
+            ctx.fillText(ic, ax * tileSize - camX, ay * tileSize - camY + bob);
+            ctx.textAlign = 'left';
+          } });
+        }
       }
     }
     for (const pl of st.placed) {

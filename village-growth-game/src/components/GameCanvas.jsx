@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useWorld } from '../hooks/useWorld';
 import { CROP_LIST } from '../game/crops';
 import { PLACEABLES } from '../game/world/worldgen';
-import { WEATHERS, RANKS, RECLAIM_BASE_COST, FARM_PLOTS_MAX } from '../game/constants';
+import { WEATHERS, RANKS, RECLAIM_BASE_COST, FARM_PLOTS_MAX, FARM_PLOTS_START } from '../game/constants';
 import { fmt } from '../game/util';
 import Modal from './world/Modal';
 import ResourcePanel from './ResourcePanel';
@@ -195,7 +195,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
         ))}
         {w.tool === 'seeds' && !w.placeType && (() => {
           const canReclaim = state.farm.length < FARM_PLOTS_MAX;
-          const reclaimCost = RECLAIM_BASE_COST * (state.farm.length - 8);
+          const reclaimCost = RECLAIM_BASE_COST * Math.max(1, state.farm.length - FARM_PLOTS_START + 1);
           return (
             <div className="seed-strip">
               {CROP_LIST.map((c) => (

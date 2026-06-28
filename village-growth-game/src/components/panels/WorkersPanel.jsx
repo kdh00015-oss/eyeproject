@@ -1,6 +1,16 @@
 // 고용소 탭: 일꾼 고용 + 개별 일꾼(이름/숙련도/행복도/휴식/작업량) 관리
 
-import { JOB_LIST, JOBS, OUTPUT, levelFromXp, levelMult, MAX_WORKER_LEVEL } from '../../game/workers';
+import { JOB_LIST, JOBS, OUTPUT, levelFromXp, levelMult, MAX_WORKER_LEVEL, XP_THRESHOLDS } from '../../game/workers';
+
+// 현재 레벨 안에서의 경험치 진행도 + 다음 레벨까지 남은 경험치
+function xpInfo(xp) {
+  const lvl = levelFromXp(xp);
+  const cur = XP_THRESHOLDS[lvl - 1] || 0;
+  const next = lvl < MAX_WORKER_LEVEL ? XP_THRESHOLDS[lvl] : null;
+  const pct = next ? Math.min(100, Math.round(((xp - cur) / (next - cur)) * 100)) : 100;
+  const remain = next ? next - xp : 0;
+  return { lvl, pct, remain, next };
+}
 
 // 일꾼 1명의 하루 예상 생산량 (휴식 중이면 0)
 function dailyOutput(w, state) {
@@ -82,18 +92,23 @@ export default function WorkersPanel({ state, derived, actions }) {
         <div className="worker-list">
           {workers.map((w) => {
             const job = JOBS[w.job];
-            const lvl = levelFromXp(w.xp);
+            const xi = xpInfo(w.xp);
+            const eff = Math.round((levelMult(xi.lvl) - 1) * 100);
             return (
               <div key={w.id} className="worker-card">
                 <div className="worker-head">
                   <span className="worker-name">{job.icon} {w.name}</span>
-                  <span className="worker-count">{job.name}</span>
+                  <span className="worker-count">{job.name} · Lv.{xi.lvl}{eff > 0 ? ` (효율 +${eff}%)` : ''}</span>
                 </div>
                 <div className="worker-stars">
                   {Array.from({ length: MAX_WORKER_LEVEL }).map((_, i) => (
-                    <span key={i} className={i < lvl ? 'star on' : 'star'}>★</span>
+                    <span key={i} className={i < xi.lvl ? 'star on' : 'star'}>★</span>
                   ))}
                   <span className="worker-status">{w.resting ? '😴 휴식 중' : '🛠️ 일하는 중'}</span>
+                </div>
+                <div className="xp-row">
+                  <div className="xp-bar"><div className="xp-fill" style={{ width: `${xi.pct}%` }} /></div>
+                  <span className="xp-text">{xi.next ? `Lv.${xi.lvl + 1}까지 ${xi.remain} XP` : '최고 레벨 ★'}</span>
                 </div>
                 <div className="worker-output">
                   {(() => { const o = dailyOutput(w, state); return o
