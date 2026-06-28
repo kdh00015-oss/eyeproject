@@ -85,9 +85,18 @@ export default function GameCanvas({ state, derived, time, actions, onSave }) {
           ))}
           <button className="mini-btn" onClick={() => w.setZoom((z) => Math.min(2.6, z + 0.2))}>➕</button>
           <button className="mini-btn" onClick={() => w.setZoom((z) => Math.max(0.8, z - 0.2))}>➖</button>
+          <button className={'mini-btn' + (w.showMap ? ' on' : '')} onClick={() => w.setShowMap((v) => !v)}>🗺️</button>
           <button className="mini-btn" onClick={() => setMenuOpen((v) => !v)}>☰</button>
         </div>
       </div>
+
+      {/* 미니맵 */}
+      {w.showMap && (
+        <div className="minimap-wrap">
+          <canvas ref={w.miniRef} width={220} height={160} className="minimap" />
+          <button className="minimap-close" onClick={() => w.setShowMap(false)}>✕</button>
+        </div>
+      )}
 
       {menuOpen && (
         <div className="menu-pop">

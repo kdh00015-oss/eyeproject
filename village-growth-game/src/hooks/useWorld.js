@@ -50,6 +50,9 @@ export function useWorld({ state, time, actions }) {
   const [speedId, setSpeedId] = useState('x1');
   const [activeBuilding, setActiveBuilding] = useState(null);
   const [hud, setHud] = useState({ clock: '08:00', night: false });
+  const [showMap, setShowMap] = useState(false);
+  const miniRef = useRef(null);
+  const showMapRef = useRef(showMap); showMapRef.current = showMap;
 
   const toolRef = useRef(tool); toolRef.current = tool;
   const cropRef = useRef(selectedCrop); cropRef.current = selectedCrop;
@@ -111,13 +114,41 @@ export function useWorld({ state, time, actions }) {
     }
   }, [actions, removedSet, placedSolid]);
 
-  // 정면 타일 상호작용 (키보드 액션)
+  // 정면/주변 상호작용 (키보드·액션 버튼) — 자유 이동이라 주변 칸까지 너그럽게 탐색
   const interactFront = useCallback(() => {
     const p = player.current;
-    const fx = Math.floor(p.x) + (p.facing === 'left' ? -1 : p.facing === 'right' ? 1 : 0);
-    const fy = Math.floor(p.y) + (p.facing === 'up' ? -1 : p.facing === 'down' ? 1 : 0);
-    interact(fx, fy);
-  }, [interact]);
+    const cx = Math.floor(p.x), cy = Math.floor(p.y);
+    const fx = cx + (p.facing === 'left' ? -1 : p.facing === 'right' ? 1 : 0);
+    const fy = cy + (p.facing === 'up' ? -1 : p.facing === 'down' ? 1 : 0);
+
+    // 배치 모드: 정면 타일에 설치
+    if (placeRef.current) { interact(fx, fy); return; }
+
+    // 후보 타일: 플레이어 칸 + 8방향 (정면을 우선)
+    const cands = [[fx, fy]];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cands.push([cx + dx, cy + dy]);
+
+    const rm = removedSet();
+    const tool = toolRef.current;
+    const match = (tx, ty) => {
+      const b = buildingHitAt(tx, ty);
+      if (b && b.door.x === tx && b.door.y === ty) return 'enter';
+      if (tool === 'axe') { const o = objectAt(tx, ty); if (o && o.type === 'tree' && !rm.has(`${tx},${ty}`)) return 'do'; }
+      else if (tool === 'pickaxe') { const o = objectAt(tx, ty); if (o && o.type === 'rock' && !rm.has(`${tx},${ty}`)) return 'do'; }
+      else if (tool === 'rod') { if (terrainAt(tx, ty) === T.WATER) return 'do'; }
+      else if (tool === 'seeds') { if (plotIndexAt(tx, ty) >= 0) return 'do'; }
+      return null;
+    };
+    // 가장 가까운 유효 타일 선택
+    let best = null, bd = 99;
+    for (const [tx, ty] of cands) {
+      if (!match(tx, ty)) continue;
+      const d = Math.hypot(tx + 0.5 - p.x, ty + 0.5 - p.y);
+      if (d < bd) { bd = d; best = [tx, ty]; }
+    }
+    if (best) interact(best[0], best[1]);
+    else interact(fx, fy);
+  }, [interact, removedSet]);
 
   // 키 입력
   useEffect(() => {
@@ -375,6 +406,32 @@ export function useWorld({ state, time, actions }) {
       }
       ctx.globalCompositeOperation = 'source-over';
     }
+
+    // 미니맵 (열려 있을 때)
+    if (showMapRef.current && miniRef.current && terrainCache.current) {
+      const mc = miniRef.current;
+      const mw = mc.width, mh = mc.height;
+      const mctx = mc.getContext('2d');
+      mctx.imageSmoothingEnabled = false;
+      mctx.drawImage(terrainCache.current, 0, 0, mw, mh);
+      const sxr = mw / WORLD_W, syr = mh / WORLD_H;
+      // 건물
+      mctx.fillStyle = '#b5713e';
+      for (const b of BUILDINGS) mctx.fillRect(b.x * sxr, b.y * syr, Math.max(2, b.w * sxr), Math.max(2, b.h * syr));
+      // 배치물
+      mctx.fillStyle = '#e0c060';
+      for (const pl of st.placed) mctx.fillRect(pl.x * sxr, pl.y * syr, 2, 2);
+      // NPC/일꾼
+      mctx.fillStyle = '#7da7ff';
+      for (const n of npcs.current) mctx.fillRect(n.x * sxr - 1, n.y * syr - 1, 2, 2);
+      for (const n of workerNpcs.current) mctx.fillRect(n.x * sxr - 1, n.y * syr - 1, 2, 2);
+      // 플레이어
+      mctx.fillStyle = '#ff3b3b';
+      mctx.fillRect(p.x * sxr - 2, p.y * syr - 2, 4, 4);
+      // 현재 화면 영역 박스
+      mctx.strokeStyle = 'rgba(255,255,255,0.7)'; mctx.lineWidth = 1;
+      mctx.strokeRect((camX / tileSize) * sxr, (camY / tileSize) * syr, (w / tileSize) * sxr, (h / tileSize) * syr);
+    }
   }
 
   // 조이스틱 (모바일)
@@ -399,7 +456,7 @@ export function useWorld({ state, time, actions }) {
     placeType, setPlaceType,
     zoom, setZoom, speedId, setSpeedId,
     activeBuilding, setActiveBuilding,
-    hud,
+    hud, showMap, setShowMap, miniRef,
     joy: { joyStart, joyMove, joyEnd },
     interactFront,
   };
