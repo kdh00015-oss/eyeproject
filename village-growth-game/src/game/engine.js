@@ -26,6 +26,7 @@ import {
 import { placedEffects, PLACEABLES } from './world/worldgen';
 import { armyUpkeep } from './military';
 import { cbonus } from './classes';
+import { skillBonus, skillLevel } from './skills';
 import { rollEvent } from './events';
 import { newlyAchieved } from './collection';
 import { clamp, weightedPick } from './util';
@@ -153,6 +154,7 @@ export function advanceDay(state) {
     prices: { ...state.prices },
     villages: state.villages,
     dex: { ...(state.dex || {}) },
+    skills: { ...(state.skills || {}) },
   };
   let log = state.log;
   const day = state.day + 1;
@@ -188,8 +190,11 @@ export function advanceDay(state) {
   for (const w of state.workers)
     if (w.job === 'rancher' && !w.resting)
       rancherFactor += OUTPUT.rancherBonus * levelMult(levelFromXp(w.xp));
-  const livestockBonus = (1 + state.research.livestock * 0.1) * rancherFactor * cbonus(state).livestock;
+  // 축산 생활 스킬: 레벨이 높을수록 생산량 보너스
+  const lvBefore = skillLevel((state.skills && state.skills.livestock) || 0);
+  const livestockBonus = (1 + state.research.livestock * 0.1) * rancherFactor * cbonus(state).livestock * skillBonus((state.skills && state.skills.livestock) || 0);
   let feedShort = false;
+  let livestockXp = 0;
   for (const [id, animal] of Object.entries(ANIMALS)) {
     const cell = state.livestock[id];
     const slot = { count: cell.count, prog: cell.prog };
@@ -198,18 +203,25 @@ export function advanceDay(state) {
       if (feed >= need) {
         feed -= need;
         slot.prog += 1;
+        livestockXp += slot.count; // 사육하는 가축 수만큼 매일 축산 숙련 ↑
         if (slot.prog >= animal.productDays) {
           slot.prog -= animal.productDays;
           const qty = Math.round(slot.count * animal.productQty * livestockBonus);
           next.inventory[animal.product] =
             (next.inventory[animal.product] || 0) + qty;
           next.dex[animal.product] = true;
+          livestockXp += qty * 2; // 생산 시 추가 경험치
         }
       } else {
         feedShort = true; // 사료 부족 → 생산 정지
       }
     }
     next.livestock[id] = slot;
+  }
+  if (livestockXp > 0) {
+    next.skills.livestock = ((state.skills && state.skills.livestock) || 0) + livestockXp;
+    const lvAfter = skillLevel(next.skills.livestock);
+    if (lvAfter > lvBefore) log = pushLog(log, day, `🐄 축산 숙련도가 Lv.${lvAfter}로 올랐습니다!`, 'good');
   }
   next.feed = feed;
   if (feedShort) {
