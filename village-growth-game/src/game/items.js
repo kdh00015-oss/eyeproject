@@ -42,12 +42,40 @@ add({ id: 'feed', name: '사료', icon: '🌿', rarity: 'common', category: 'mat
 // 제작품 (재료/장비)
 add({ id: 'plank', name: '판자', icon: '🟫', rarity: 'uncommon', category: 'material', desc: '목재를 가공한 판자. 고급 건축에 쓰입니다.' });
 add({ id: 'block', name: '석재블록', icon: '🧱', rarity: 'uncommon', category: 'material', desc: '돌을 다듬은 블록. 견고한 구조물 재료.' });
-add({ id: 'sturdyAxe', name: '강화 도끼', icon: '🪓', rarity: 'rare', category: 'equipment', maxStack: 1, desc: '잘 벼린 도끼. 장착하면 벌목 시 목재를 더 얻습니다. (+2 목재/벌목)' });
-add({ id: 'sturdyPick', name: '강화 곡괭이', icon: '⛏️', rarity: 'rare', category: 'equipment', maxStack: 1, desc: '단단한 곡괭이. 장착하면 채굴 시 돌을 더 얻습니다. (+2 돌/채굴)' });
+add({ id: 'sturdyAxe', name: '강화 도끼', icon: '🪓', rarity: 'rare', category: 'equipment', slot: 'tool', maxStack: 1, desc: '잘 벼린 도끼. 장착하면 벌목 시 목재를 더 얻습니다. (+2 목재/벌목)' });
+add({ id: 'sturdyPick', name: '강화 곡괭이', icon: '⛏️', rarity: 'rare', category: 'equipment', slot: 'tool', maxStack: 1, desc: '단단한 곡괭이. 장착하면 채굴 시 돌을 더 얻습니다. (+2 돌/채굴)' });
+
+// --- 전투 장비 (slot/atk/def/hp/maxDur) ---
+function gear(id, name, icon, slot, rarity, stats, dur, desc) {
+  add({ id, name, icon, rarity, category: 'equipment', slot, maxStack: 1, atk: stats.atk || 0, def: stats.def || 0, hp: stats.hp || 0, maxDur: dur, desc });
+}
+gear('woodenSword', '나무검', '🗡️', 'weapon', 'common', { atk: 6 }, 40, '낡은 나무검. 공격력 +6');
+gear('ironSword', '철검', '⚔️', 'weapon', 'uncommon', { atk: 14 }, 60, '단단한 철검. 공격력 +14');
+gear('knightBlade', '기사검', '🗡️', 'weapon', 'rare', { atk: 24, hp: 10 }, 90, '기사의 명검. 공격력 +24');
+gear('clothArmor', '천 갑옷', '🧥', 'armor', 'common', { def: 3, hp: 10 }, 40, '방어력 +3, 체력 +10');
+gear('leatherArmor', '가죽 갑옷', '🦺', 'armor', 'uncommon', { def: 6, hp: 20 }, 60, '방어력 +6, 체력 +20');
+gear('plateArmor', '판금 갑옷', '🛡️', 'armor', 'rare', { def: 14, hp: 40 }, 100, '방어력 +14, 체력 +40');
+gear('leatherCap', '가죽 투구', '🪖', 'helmet', 'common', { def: 2 }, 40, '방어력 +2');
+gear('ironHelm', '철 투구', '⛑️', 'helmet', 'uncommon', { def: 5, hp: 8 }, 60, '방어력 +5');
+gear('leatherGloves', '가죽 장갑', '🧤', 'gloves', 'common', { def: 1, atk: 1 }, 40, '공/방 +1');
+gear('ironGauntlet', '철 건틀릿', '🥊', 'gloves', 'uncommon', { def: 3, atk: 2 }, 60, '공격 +2, 방어 +3');
+gear('leatherBoots', '가죽 신발', '🥾', 'boots', 'common', { def: 1, hp: 5 }, 40, '방어 +1, 체력 +5');
+gear('ironBoots', '철 장화', '🦶', 'boots', 'uncommon', { def: 3, hp: 10 }, 60, '방어 +3, 체력 +10');
+gear('woodCharm', '나무 부적', '📿', 'necklace', 'common', { hp: 15 }, 0, '체력 +15');
+gear('rubyAmulet', '루비 목걸이', '💎', 'necklace', 'rare', { hp: 30, atk: 4 }, 0, '체력 +30, 공격 +4');
+gear('copperRing', '구리 반지', '💍', 'ring', 'common', { atk: 2 }, 0, '공격 +2');
+gear('goldRing', '황금 반지', '💍', 'ring', 'rare', { atk: 4, def: 2 }, 0, '공/방 +');
+
+// 사냥 재료 (몬스터 드롭 → 대장간 제작 재료)
+add({ id: 'hide', name: '가죽', icon: '🟫', rarity: 'common', category: 'material', desc: '몬스터에게서 얻은 가죽. 방어구 제작 재료.' });
+add({ id: 'bone', name: '뼈', icon: '🦴', rarity: 'common', category: 'material', desc: '단단한 뼈. 무기 제작 재료.' });
+add({ id: 'oreIron', name: '철광석', icon: '🪨', rarity: 'uncommon', category: 'material', desc: '제련하면 무기·방어구가 됩니다.' });
+add({ id: 'crystal', name: '마력 수정', icon: '🔮', rarity: 'rare', category: 'material', desc: '장비 강화에 쓰이는 신비한 수정.' });
 
 // 소비품
 add({ id: 'bread', name: '빵', icon: '🍞', rarity: 'common', category: 'consumable', desc: '갓 구운 빵. 사용하면 주민 행복도가 +6 오릅니다.', effect: { happiness: 6 } });
 add({ id: 'feast', name: '잔칫상', icon: '🍲', rarity: 'uncommon', category: 'consumable', desc: '푸짐한 잔칫상. 사용하면 주민 행복도가 +15 오릅니다.', effect: { happiness: 15 } });
+add({ id: 'potion', name: '치유 물약', icon: '🧪', rarity: 'uncommon', category: 'consumable', desc: '전투 중 체력을 40 회복합니다.', effect: { heal: 40 } });
 
 export const ITEM_DB = ITEMS;
 export function itemDef(id) { return ITEMS[id] || { id, name: id, icon: '❓', rarity: 'common', category: 'material', maxStack: 99, desc: '' }; }

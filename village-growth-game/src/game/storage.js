@@ -21,7 +21,7 @@ function mergeBase(data) {
     stats: { ...base.stats, ...data.stats },
     dailyBase: { ...base.dailyBase, ...data.dailyBase },
     claimed: Array.isArray(data.claimed) ? data.claimed : [],
-    equipped: Array.isArray(data.equipped) ? data.equipped : [],
+    gear: { ...base.gear, ...(data.gear || {}) },
     satisfaction: { ...base.satisfaction, ...data.satisfaction },
   };
 }
