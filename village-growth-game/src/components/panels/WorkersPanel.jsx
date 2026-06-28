@@ -84,59 +84,73 @@ export default function WorkersPanel({ state, derived, actions }) {
         })}
       </div>
 
-      {/* 고용된 일꾼 목록 */}
+      {/* 고용된 일꾼 — 직종별로 구분 */}
       <h3 className="sub-title">우리 마을 일꾼 ({workers.length})</h3>
       {workers.length === 0 ? (
         <p className="empty">아직 고용한 일꾼이 없습니다.</p>
       ) : (
-        <div className="worker-list">
-          {workers.map((w) => {
-            const job = JOBS[w.job];
-            const xi = xpInfo(w.xp);
-            const eff = Math.round((levelMult(xi.lvl) - 1) * 100);
-            return (
-              <div key={w.id} className="worker-card">
-                <div className="worker-head">
-                  <span className="worker-name">{job.icon} {w.name}</span>
-                  <span className="worker-count">{job.name} · Lv.{xi.lvl}{eff > 0 ? ` (효율 +${eff}%)` : ''}</span>
-                </div>
-                <div className="worker-stars">
-                  {Array.from({ length: MAX_WORKER_LEVEL }).map((_, i) => (
-                    <span key={i} className={i < xi.lvl ? 'star on' : 'star'}>★</span>
-                  ))}
-                  <span className="worker-status">{w.resting ? '😴 휴식 중' : '🛠️ 일하는 중'}</span>
-                </div>
-                <div className="xp-row">
-                  <div className="xp-bar"><div className="xp-fill" style={{ width: `${xi.pct}%` }} /></div>
-                  <span className="xp-text">{xi.next ? `Lv.${xi.lvl + 1}까지 ${xi.remain} XP` : '최고 레벨 ★'}</span>
-                </div>
-                <div className="worker-output">
-                  {(() => { const o = dailyOutput(w, state); return o
-                    ? <>📈 {o.icon} {o.label} <b>+{o.amount}{o.unit}</b></>
-                    : <span className="rest-note">휴식 중 — 오늘은 생산 없음</span>; })()}
-                </div>
-                <div className="happy-bar">
-                  <div className="happy-fill" style={{
-                    width: `${w.happiness}%`,
-                    background: w.happiness > 60 ? '#6dd36d' : w.happiness > 30 ? '#f4c542' : '#e0604a',
-                  }} />
-                </div>
-                <div className="worker-btns">
-                  {xi.lvl < MAX_WORKER_LEVEL ? (
-                    <button className="btn-sm buy" disabled={state.money < trainCost(xi.lvl)}
-                      onClick={() => actions.trainWorker(w.id)}
-                      title={`골드로 즉시 레벨업 → Lv.${xi.lvl + 1} (효율 +${Math.round((levelMult(xi.lvl + 1) - 1) * 100)}%)`}>
-                      📈 훈련 Lv.{xi.lvl + 1} ({trainCost(xi.lvl)}G)
-                    </button>
-                  ) : (
-                    <span className="rest-note">최고 레벨 달성 ★</span>
-                  )}
-                  <button className="btn-sm sell" onClick={() => actions.fireWorker(w.id)}>해고</button>
-                </div>
+        JOB_LIST.map((job) => {
+          const group = workers.filter((w) => w.job === job.id);
+          if (group.length === 0) return null;
+          // 이 직종의 하루 합계 생산
+          let total = 0, unit = '', icon = '';
+          for (const w of group) { const o = dailyOutput(w, state); if (o) { total += o.amount; unit = o.unit; icon = o.icon; } }
+          return (
+            <div key={job.id} className="job-group">
+              <div className="job-group-head">
+                <span className="job-group-name">{job.icon} {job.name} <b>×{group.length}</b></span>
+                {icon && <span className="job-group-out">📦 {icon} +{total}{unit}</span>}
               </div>
-            );
-          })}
-        </div>
+              <div className="worker-list">
+                {group.map((w) => {
+                  const xi = xpInfo(w.xp);
+                  const eff = Math.round((levelMult(xi.lvl) - 1) * 100);
+                  return (
+                    <div key={w.id} className="worker-card">
+                      <div className="worker-head">
+                        <span className="worker-name">{job.icon} {w.name}</span>
+                        <span className="worker-count">Lv.{xi.lvl}{eff > 0 ? ` (효율 +${eff}%)` : ''}</span>
+                      </div>
+                      <div className="worker-stars">
+                        {Array.from({ length: MAX_WORKER_LEVEL }).map((_, i) => (
+                          <span key={i} className={i < xi.lvl ? 'star on' : 'star'}>★</span>
+                        ))}
+                        <span className="worker-status">{w.resting ? '😴 휴식 중' : '🛠️ 일하는 중'}</span>
+                      </div>
+                      <div className="xp-row">
+                        <div className="xp-bar"><div className="xp-fill" style={{ width: `${xi.pct}%` }} /></div>
+                        <span className="xp-text">{xi.next ? `Lv.${xi.lvl + 1}까지 ${xi.remain} XP` : '최고 레벨 ★'}</span>
+                      </div>
+                      <div className="worker-output">
+                        {(() => { const o = dailyOutput(w, state); return o
+                          ? <>📈 {o.icon} {o.label} <b>+{o.amount}{o.unit}</b></>
+                          : <span className="rest-note">휴식 중 — 오늘은 생산 없음</span>; })()}
+                      </div>
+                      <div className="happy-bar">
+                        <div className="happy-fill" style={{
+                          width: `${w.happiness}%`,
+                          background: w.happiness > 60 ? '#6dd36d' : w.happiness > 30 ? '#f4c542' : '#e0604a',
+                        }} />
+                      </div>
+                      <div className="worker-btns">
+                        {xi.lvl < MAX_WORKER_LEVEL ? (
+                          <button className="btn-sm buy" disabled={state.money < trainCost(xi.lvl)}
+                            onClick={() => actions.trainWorker(w.id)}
+                            title={`골드로 즉시 레벨업 → Lv.${xi.lvl + 1} (효율 +${Math.round((levelMult(xi.lvl + 1) - 1) * 100)}%)`}>
+                            📈 훈련 Lv.{xi.lvl + 1} ({trainCost(xi.lvl)}G)
+                          </button>
+                        ) : (
+                          <span className="rest-note">최고 레벨 달성 ★</span>
+                        )}
+                        <button className="btn-sm sell" onClick={() => actions.fireWorker(w.id)}>해고</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })
       )}
     </div>
   );
