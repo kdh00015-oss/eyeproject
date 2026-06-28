@@ -28,11 +28,12 @@ export function createInitialState() {
   const research = {};
   for (const id of Object.keys(RESEARCH_FIELDS)) research[id] = 0;
 
-  // 인근 마을: 발견/교역 여부
+  // 인근 마을: 발견/교역/정복 여부
   const villages = VILLAGE_TEMPLATES.map((v) => ({
     id: v.id,
     discovered: false,
     tradeOpen: false,
+    owned: false,
   }));
 
   // 재화 인벤토리 (모든 재화 0에서 시작) + 사료 약간
@@ -79,6 +80,10 @@ export function createInitialState() {
     claimed: [], // 보상 받은 퀘스트 id
     // 장비 슬롯 (각 슬롯: null 또는 { id, dur, enh })
     gear: { weapon: null, armor: null, helmet: null, gloves: null, boots: null, necklace: null, ring: null, tool: null },
+    // 군사: 장수 + 군대
+    generals: [], // { id, name, might, command, intellect }
+    army: { infantry: 0, archer: 0, cavalry: 0 },
+    nextGeneralId: 1,
     // 마을 레벨 + 주민 만족도 세부지표
     villageLevel: 1,
     satisfaction: { food: 60, safety: 50, culture: 40, education: 30, hygiene: 45 },

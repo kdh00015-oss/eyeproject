@@ -23,6 +23,9 @@ function mergeBase(data) {
     claimed: Array.isArray(data.claimed) ? data.claimed : [],
     gear: { ...base.gear, ...(data.gear || {}) },
     satisfaction: { ...base.satisfaction, ...data.satisfaction },
+    generals: Array.isArray(data.generals) ? data.generals : base.generals,
+    army: { ...base.army, ...(data.army || {}) },
+    nextGeneralId: data.nextGeneralId || base.nextGeneralId,
   };
 }
 

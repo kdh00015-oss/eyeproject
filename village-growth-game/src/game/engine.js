@@ -23,6 +23,7 @@ import {
   WORK_FATIGUE, REST_RECOVER, REST_THRESHOLD, REST_BACK, UNPAID_PENALTY,
 } from './workers';
 import { placedEffects } from './world/worldgen';
+import { armyUpkeep } from './military';
 import { clamp, weightedPick } from './util';
 
 // 마을 레벨 임계 점수 (index = level-1)
@@ -322,19 +323,25 @@ export function advanceDay(state) {
   const tax =
     population * (state.taxRate / 100) * TAX_PER_POP * adminBonus * happinessFactor;
 
-  // 7) 교역 수입 + 영향력
+  // 7) 교역 수입 + 영향력 (+ 정복 영토 수입, 군대 유지비)
   let tradeIncome = 0;
   let influenceGain = 0;
   for (const v of state.villages) {
-    if (!v.tradeOpen) continue;
     const tpl = VILLAGE_TEMPLATES.find((t) => t.id === v.id);
-    tradeIncome += tpl.tradeIncome * derived.tradeMult;
-    influenceGain += tpl.influence * 0.05;
+    if (v.tradeOpen) {
+      tradeIncome += tpl.tradeIncome * derived.tradeMult;
+      influenceGain += tpl.influence * 0.05;
+    }
+    if (v.owned) { // 영토는 추가 수입 + 영향력
+      tradeIncome += tpl.tradeIncome * 0.8;
+      influenceGain += tpl.influence * 0.12;
+    }
   }
+  const militaryUpkeep = armyUpkeep(state);
 
   // 일꾼 급여/씨앗 정산 — 못 주면 행복도 하락 + 이탈
   const gross = state.money + tax + tradeIncome;
-  const owed = wagesTotal + workerSeedSpend;
+  const owed = wagesTotal + workerSeedSpend + militaryUpkeep;
   next.money = Math.max(0, gross - owed);
   if (owed > gross && totalWorkers > 0) {
     next.workers = next.workers.map((w) => ({
