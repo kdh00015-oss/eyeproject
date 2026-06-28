@@ -229,6 +229,14 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
           {WINDOWS[win].el}
         </Modal>
       )}
+
+      {/* NPC 대화/거래 */}
+      {w.talkNpc && (
+        <Modal title={`${w.talkNpc.name}`} icon="🧑" onClose={() => w.setTalkNpc(null)}>
+          <p className="npc-line">“안녕하세요! 마침 장이 섰어요. 가져온 물건 있으면 팔아보세요.”</p>
+          <MarketPanel state={state} derived={derived} time={time} actions={actions} />
+        </Modal>
+      )}
     </div>
   );
 }

@@ -9,10 +9,22 @@ import { paletteFor, ambientOverlay, isNight, clockString } from '../game/world/
 import { CROPS } from '../game/crops';
 import { JOBS, JOB_SITE } from '../game/workers';
 
-const DAY_REAL_SEC = 100;
+const DAY_REAL_SEC = 240; // 하루를 더 느리게 (체감 시간 ↑)
 const SPEED = { pause: 0, x1: 1, x2: 2.5 };
-const PLAYER_SPEED = 4.6;
+const PLAYER_SPEED = 4.4;
 const RADIUS = 0.32;
+const TREE_HITS = 3; // 나무는 3번 베어야 쓰러짐
+const ROCK_HITS = 4; // 바위는 4번 캐야 부서짐
+
+// 채집 진행 표시 (노드 위 작은 점)
+function drawNodeHits(ctx, px, py, size, done, need) {
+  const r = size * 0.06, gap = size * 0.16, total = (need - 1) * gap;
+  const sx = px + size / 2 - total / 2, sy = py + size * 0.08;
+  for (let i = 0; i < need; i++) {
+    ctx.fillStyle = i < done ? '#f4c542' : 'rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.arc(sx + i * gap, sy, r, 0, 7); ctx.fill();
+  }
+}
 
 export function useWorld({ state, time, actions }) {
   const canvasRef = useRef(null);
@@ -47,6 +59,10 @@ export function useWorld({ state, time, actions }) {
   const [hud, setHud] = useState({ clock: '08:00', night: false });
   const [showMap, setShowMap] = useState(false);
   const miniRef = useRef(null);
+  const [talkNpc, setTalkNpc] = useState(null);
+  const talkRef = useRef(talkNpc); talkRef.current = talkNpc;
+  const hits = useRef(new Map()); // 노드별 타격 누적
+  const hitFx = useRef(null); // 최근 타격 연출 {key,t}
 
   const toolRef = useRef(tool); toolRef.current = tool;
   const cropRef = useRef(selectedCrop); cropRef.current = selectedCrop;
@@ -84,6 +100,7 @@ export function useWorld({ state, time, actions }) {
     player.current.y = at.y + 0.5;
     npcs.current = MAPS[to].NPCS.map((n) => ({ ...n, x: n.path[0][0] + 0.5, y: n.path[0][1] + 0.5, wp: 0, wait: 0 }));
     cacheKey.current = null; // 지형 캐시 재생성
+    hits.current.clear(); // 채집 타격 누적 초기화
     travelCd.current = 0.6;
     cam.current.x = at.x * WTILE * zoomCur.current - size.current.w / 2;
     cam.current.y = at.y * WTILE * zoomCur.current - size.current.h / 2;
@@ -104,8 +121,17 @@ export function useWorld({ state, time, actions }) {
     const tool = toolRef.current;
     const o = M.objectAt(tx, ty);
     const rm = removedSet();
-    if (tool === 'axe' && o && o.type === 'tree' && !rm.has(`${tx},${ty}`)) { actions.chop(`${M.id}:${tx},${ty}`); cooldown.current = 0.28; return; }
-    if (tool === 'pickaxe' && o && o.type === 'rock' && !rm.has(`${tx},${ty}`)) { actions.mine(`${M.id}:${tx},${ty}`); cooldown.current = 0.28; return; }
+    // 여러 번 타격해야 채집되는 노드
+    const hitNode = (need, type, fn) => {
+      const key = `${tx},${ty}`;
+      const h = (hits.current.get(key) || 0) + 1;
+      hitFx.current = { key, t: performance.now() };
+      cooldown.current = 0.32;
+      if (h >= need) { hits.current.delete(key); fn(`${M.id}:${tx},${ty}`); }
+      else hits.current.set(key, h);
+    };
+    if (tool === 'axe' && o && o.type === 'tree' && !rm.has(`${tx},${ty}`)) { hitNode(TREE_HITS, 'tree', actions.chop); return; }
+    if (tool === 'pickaxe' && o && o.type === 'rock' && !rm.has(`${tx},${ty}`)) { hitNode(ROCK_HITS, 'rock', actions.mine); return; }
     if (tool === 'rod') {
       const near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => M.terrainAt(tx + dx, ty + dy) === T.WATER);
       if (near) { actions.fish('lake'); cooldown.current = 0.35; return; }
@@ -131,6 +157,15 @@ export function useWorld({ state, time, actions }) {
     if (placeRef.current) { interact(fx, fy); return; }
     const cands = [[fx, fy]];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cands.push([cx + dx, cy + dy]);
+    // 1) 인접한 건물 문 → 진입 (걸을 때 자동 진입 X, 행동키로만)
+    for (const [tx, ty] of cands) {
+      const b = M.buildingHitAt(tx, ty);
+      if (b && b.door.x === tx && b.door.y === ty) { setActiveBuilding(b); return; }
+    }
+    // 2) 인접한 마을 NPC → 대화/거래
+    let bn = null, bnd = 1.4;
+    for (const n of npcs.current) { if (!n.name) continue; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bnd) { bnd = d; bn = n; } }
+    if (bn) { setTalkNpc(bn); return; }
     const rm = removedSet();
     const tool = toolRef.current;
     const match = (tx, ty) => {
@@ -154,6 +189,7 @@ export function useWorld({ state, time, actions }) {
   // 키 입력
   useEffect(() => {
     const down = (e) => {
+      if (talkRef.current) { if (e.key === 'Escape') setTalkNpc(null); return; }
       if (modalRef.current) { if (e.key === 'Escape') setActiveBuilding(null); return; }
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
@@ -231,7 +267,7 @@ export function useWorld({ state, time, actions }) {
     const M = getMap();
     const rm = removedSet(), ps = placedSolid();
 
-    if (!modalRef.current) {
+    if (!modalRef.current && !talkRef.current) {
       let dx = 0, dy = 0;
       const k = keys.current;
       if (k.has('w') || k.has('arrowup')) dy -= 1;
@@ -248,14 +284,11 @@ export function useWorld({ state, time, actions }) {
         if (moveAxis(p.x + dx * step, p.y, M, rm, ps)) p.x += dx * step;
         if (moveAxis(p.x, p.y + dy * step, M, rm, ps)) p.y += dy * step;
         p.moveT += dt; p.frame = Math.floor(p.moveT * 8) % 2;
-        // 출구 → 맵 이동
+        // 출구 → 맵 이동 (경계는 자동, 건물 문은 행동키로만)
         if (travelCd.current <= 0) {
           const ex = M.exitAt(Math.floor(p.x), Math.floor(p.y));
           if (ex) { travel(ex.to, ex.at); return; }
         }
-        // 문 진입
-        const d = M.doorAt(Math.floor(p.x), Math.floor(p.y));
-        if (d && !modalRef.current) setActiveBuilding(d);
       } else { p.frame = 0; }
     }
 
@@ -331,9 +364,19 @@ export function useWorld({ state, time, actions }) {
     const sprites = [];
     for (const o of M.OBJECTS) {
       if (o.x < x0 - 1 || o.x > x1 || o.y < y0 - 1 || o.y > y1) continue;
-      if (rm.has(`${o.x},${o.y}`)) continue;
+      const key = `${o.x},${o.y}`;
+      if (rm.has(key)) continue;
       const ox = o.x * tileSize - camX, oy = o.y * tileSize - camY;
-      sprites.push({ y: o.y + 0.9, fn: () => drawObject(ctx, o, ox, oy, tileSize, pal, wind) });
+      const done = hits.current.get(key) || 0;
+      const shaking = hitFx.current && hitFx.current.key === key && now - hitFx.current.t < 180;
+      const jit = shaking ? Math.sin(now / 16) * 2.5 : 0;
+      sprites.push({
+        y: o.y + 0.9, fn: () => {
+          drawObject(ctx, o, ox + jit, oy, tileSize, pal, wind);
+          if (done > 0 && (o.type === 'tree' || o.type === 'rock'))
+            drawNodeHits(ctx, ox, oy, tileSize, done, o.type === 'tree' ? TREE_HITS : ROCK_HITS);
+        },
+      });
     }
     if (M.FARM) {
       for (let i = 0; i < st.farm.length; i++) {
@@ -360,12 +403,27 @@ export function useWorld({ state, time, actions }) {
     sprites.sort((a, b) => a.y - b.y);
     for (const s of sprites) s.fn();
 
-    // 출구 표시 (노란 테두리 + 화살표)
+    // 출구 표시 (노란 칸 + 화살표 + 표지판 라벨)
+    const labeled = new Set();
+    ctx.textAlign = 'center';
     for (const ex of M.EXITS) {
       const exx = ex.x * tileSize - camX, exy = ex.y * tileSize - camY;
-      ctx.fillStyle = 'rgba(255,220,80,0.25)'; ctx.fillRect(exx, exy, tileSize, tileSize);
+      ctx.fillStyle = 'rgba(255,220,80,0.22)'; ctx.fillRect(exx, exy, tileSize, tileSize);
       ctx.strokeStyle = 'rgba(255,220,80,0.9)'; ctx.lineWidth = 2; ctx.strokeRect(exx, exy, tileSize, tileSize);
+      ctx.fillStyle = 'rgba(255,220,80,0.95)'; ctx.font = `bold ${Math.round(tileSize * 0.5)}px sans-serif`;
+      ctx.fillText('➜', exx + tileSize / 2, exy + tileSize * 0.68);
+      if (!labeled.has(ex.to)) {
+        labeled.add(ex.to);
+        const lx = exx + tileSize / 2, ly = exy - 4;
+        const label = `🪧 ${ex.label || '이동'}`;
+        ctx.font = 'bold 12px sans-serif';
+        const w2 = ctx.measureText(label).width + 12;
+        ctx.fillStyle = 'rgba(20,26,38,0.92)'; ctx.fillRect(lx - w2 / 2, ly - 18, w2, 18);
+        ctx.strokeStyle = 'rgba(255,220,80,0.85)'; ctx.lineWidth = 1; ctx.strokeRect(lx - w2 / 2, ly - 18, w2, 18);
+        ctx.fillStyle = '#ffe27a'; ctx.fillText(label, lx, ly - 5);
+      }
     }
+    ctx.textAlign = 'left';
 
     if (placeRef.current) {
       const tx = Math.floor(p.x) + (p.facing === 'left' ? -1 : p.facing === 'right' ? 1 : 0);
@@ -426,6 +484,7 @@ export function useWorld({ state, time, actions }) {
     zoom, setZoom, speedId, setSpeedId,
     activeBuilding, setActiveBuilding,
     hud, showMap, setShowMap, miniRef,
+    talkNpc, setTalkNpc,
     mapId, mapName: mapId === 'village' ? '마을' : '들판',
     joy: { joyStart, joyMove, joyEnd },
     interactFront,
