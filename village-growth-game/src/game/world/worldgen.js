@@ -22,7 +22,12 @@ export const OBJ = {
   ROCK: 'rock',
   BUSH: 'bush',
   FLOWER: 'flower',
+  MUSHROOM: 'mushroom',
+  LOG: 'log',
+  GRASS: 'grasstuft',
 };
+// 통과 가능한(장식) 자연물
+export const SOFT_OBJ = new Set([OBJ.FLOWER, OBJ.MUSHROOM, OBJ.LOG, OBJ.GRASS]);
 
 // 농장 밭 영역 (state.farm 인덱스와 매핑)
 export const FARM = { x: 5, y: 20, cols: 4, rows: 4 };
@@ -105,36 +110,42 @@ for (const b of BUILDINGS) {
   DOORS.set(`${b.door.x},${b.door.y}`, b);
 }
 
-// 자연물 생성 (나무/바위/덤불/꽃)
+// 자연물 생성 (나무/바위/덤불/꽃/버섯/통나무/풀)
 function buildObjects() {
   const rnd = mulberry32(99);
   const objs = [];
   const occupied = new Set();
-  const tryPlace = (type) => {
+  const tryPlace = (type, allowSoftOverlap) => {
     const x = Math.floor(rnd() * WORLD_W);
     const y = Math.floor(rnd() * WORLD_H);
     const key = `${x},${y}`;
     const c = terrainAt(x, y);
     if (c === T.WATER || c === T.PATH || c === T.SOIL) return;
-    if (occupied.has(key) || BUILDING_SOLID.has(key) || DOORS.has(key)) return;
+    if (!allowSoftOverlap && occupied.has(key)) return;
+    if (BUILDING_SOLID.has(key) || DOORS.has(key)) return;
     if (inRect(x, y, { x: FARM.x - 1, y: FARM.y - 1, w: FARM.cols + 2, h: FARM.rows + 2 })) return;
     occupied.add(key);
-    objs.push({ type, x, y });
+    // 오브젝트마다 고유 seed → 크기·모양·색 변형
+    objs.push({ type, x, y, seed: Math.floor(rnd() * 1000) });
   };
-  for (let i = 0; i < 90; i++) tryPlace(OBJ.TREE);
-  for (let i = 0; i < 28; i++) tryPlace(OBJ.ROCK);
-  for (let i = 0; i < 30; i++) tryPlace(OBJ.BUSH);
-  for (let i = 0; i < 40; i++) tryPlace(OBJ.FLOWER);
+  // 나무는 군집(grove)으로도 약간 모이게
+  for (let i = 0; i < 95; i++) tryPlace(OBJ.TREE);
+  for (let i = 0; i < 30; i++) tryPlace(OBJ.ROCK);
+  for (let i = 0; i < 34; i++) tryPlace(OBJ.BUSH);
+  for (let i = 0; i < 18; i++) tryPlace(OBJ.LOG, true);
+  for (let i = 0; i < 26; i++) tryPlace(OBJ.MUSHROOM, true);
+  for (let i = 0; i < 55; i++) tryPlace(OBJ.FLOWER, true);
+  for (let i = 0; i < 150; i++) tryPlace(OBJ.GRASS, true); // 바람에 흔들리는 풀
   return objs;
 }
 
 export const OBJECTS = buildObjects();
 
-// 자연물 빠른 조회 맵
-const OBJ_MAP = new Map();
-for (const o of OBJECTS) OBJ_MAP.set(`${o.x},${o.y}`, o);
+// 단단한(통과불가) 자연물 조회 맵 — 벌목/채굴 대상 + 충돌
+const SOLID_OBJ_MAP = new Map();
+for (const o of OBJECTS) if (!SOFT_OBJ.has(o.type)) SOLID_OBJ_MAP.set(`${o.x},${o.y}`, o);
 export function objectAt(x, y) {
-  return OBJ_MAP.get(`${x},${y}`) || null;
+  return SOLID_OBJ_MAP.get(`${x},${y}`) || null;
 }
 
 export function doorAt(x, y) {
@@ -155,8 +166,8 @@ export function isWalkable(x, y, removed, placedSolid) {
   if (c === T.WATER) return false;
   if (BUILDING_SOLID.has(`${x},${y}`)) return false;
   const key = `${x},${y}`;
-  const o = OBJ_MAP.get(key);
-  if (o && o.type !== OBJ.FLOWER && !(removed && removed.has(key))) return false;
+  const o = SOLID_OBJ_MAP.get(key);
+  if (o && !(removed && removed.has(key))) return false;
   if (placedSolid && placedSolid.has(key)) return false;
   return true;
 }

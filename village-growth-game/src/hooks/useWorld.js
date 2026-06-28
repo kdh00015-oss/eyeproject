@@ -7,9 +7,9 @@ import {
   FARM, terrainAt, objectAt, doorAt, buildingHitAt, isWalkable, plotIndexAt, PLACEABLES,
 } from '../game/world/worldgen';
 import {
-  drawTile, drawObject, drawCrop, drawBuilding, drawPlaceable, drawLampGlow, drawPlayer, drawNPC,
+  drawTile, drawWaterShimmer, drawObject, drawCrop, drawBuilding, drawPlaceable, drawLampGlow, drawPlayer, drawNPC,
 } from '../game/world/draw';
-import { paletteFor, nightOverlay, isNight, clockString } from '../game/world/palette';
+import { paletteFor, ambientOverlay, isNight, clockString } from '../game/world/palette';
 import { CROPS } from '../game/crops';
 import { JOBS, JOB_SITE } from '../game/workers';
 
@@ -38,6 +38,9 @@ export function useWorld({ state, time, actions }) {
   const cooldown = useRef(0);
   const size = useRef({ w: 800, h: 500, dpr: 1 });
   const joy = useRef({ active: false, dx: 0, dy: 0 });
+  const zoomCur = useRef(1.4); // 부드러운 줌(현재값)
+  const terrainCache = useRef(null); // 오프스크린 지형 캐시
+  const cacheSeason = useRef(null);
 
   // UI 표시 상태 (저빈도 동기화)
   const [tool, setTool] = useState('axe'); // axe|pickaxe|rod|seeds
@@ -248,22 +251,38 @@ export function useWorld({ state, time, actions }) {
       if (clock.current >= 1) { clock.current -= 1; actions.nextDay(); }
     }
 
-    // 카메라
-    const tileSize = WTILE * zoomRef.current;
+    // 줌 부드럽게
+    zoomCur.current += (zoomRef.current - zoomCur.current) * Math.min(1, dt * 8);
+    const tileSize = WTILE * zoomCur.current;
     const { w, h } = size.current;
-    let cx = p.x * tileSize - w / 2;
-    let cy = p.y * tileSize - h / 2;
-    cx = Math.max(0, Math.min(WORLD_W * tileSize - w, cx));
-    cy = Math.max(0, Math.min(WORLD_H * tileSize - h, cy));
-    if (WORLD_W * tileSize < w) cx = (WORLD_W * tileSize - w) / 2;
-    if (WORLD_H * tileSize < h) cy = (WORLD_H * tileSize - h) / 2;
-    cam.current.x = cx; cam.current.y = cy;
+    let tx = p.x * tileSize - w / 2;
+    let ty = p.y * tileSize - h / 2;
+    tx = Math.max(0, Math.min(Math.max(0, WORLD_W * tileSize - w), tx));
+    ty = Math.max(0, Math.min(Math.max(0, WORLD_H * tileSize - h), ty));
+    if (WORLD_W * tileSize < w) tx = (WORLD_W * tileSize - w) / 2;
+    if (WORLD_H * tileSize < h) ty = (WORLD_H * tileSize - h) / 2;
+    // 카메라 부드럽게 따라가기
+    const ease = Math.min(1, dt * 7);
+    cam.current.x += (tx - cam.current.x) * ease;
+    cam.current.y += (ty - cam.current.y) * ease;
 
     // HUD 동기화 (가끔)
     if (!update._t || now - update._t > 250) {
       update._t = now;
       setHud({ clock: clockString(clock.current), night: isNight(clock.current) });
     }
+  }
+
+  // 오프스크린 지형 캐시 생성 (계절마다 한 번)
+  function buildTerrainCache(pal) {
+    const c = document.createElement('canvas');
+    c.width = WORLD_W * WTILE; c.height = WORLD_H * WTILE;
+    const cx = c.getContext('2d');
+    cx.imageSmoothingEnabled = false;
+    for (let ty = 0; ty < WORLD_H; ty++)
+      for (let tx = 0; tx < WORLD_W; tx++)
+        drawTile(cx, TERRAIN[ty][tx], tx, ty, tx * WTILE, ty * WTILE, WTILE, pal);
+    return c;
   }
 
   function render() {
@@ -276,60 +295,66 @@ export function useWorld({ state, time, actions }) {
 
     const st = stateRef.current;
     const pal = paletteFor(seasonRef.current);
-    const tileSize = WTILE * zoomRef.current;
+    const tileSize = WTILE * zoomCur.current;
     const camX = cam.current.x, camY = cam.current.y;
     const x0 = Math.max(0, Math.floor(camX / tileSize));
     const y0 = Math.max(0, Math.floor(camY / tileSize));
     const x1 = Math.min(WORLD_W, Math.ceil((camX + w) / tileSize));
     const y1 = Math.min(WORLD_H, Math.ceil((camY + h) / tileSize));
     const now = performance.now();
+    const wind = now / 700;
+    const night = isNight(clock.current);
 
-    // 지형
+    // 지형: 캐시 한 장을 카메라 위치에 맞춰 blit (60FPS 핵심)
+    if (!terrainCache.current || cacheSeason.current !== seasonRef.current) {
+      terrainCache.current = buildTerrainCache(pal);
+      cacheSeason.current = seasonRef.current;
+    }
+    ctx.drawImage(terrainCache.current, -camX, -camY, WORLD_W * tileSize, WORLD_H * tileSize);
+
+    // 물 반짝임 (동적)
     for (let ty = y0; ty < y1; ty++)
       for (let tx = x0; tx < x1; tx++)
-        drawTile(ctx, TERRAIN[ty][tx], tx, ty, tx * tileSize - camX, ty * tileSize - camY, tileSize, pal, now);
+        if (TERRAIN[ty][tx] === T.WATER)
+          drawWaterShimmer(ctx, tx * tileSize - camX, ty * tileSize - camY, tileSize, pal, now);
 
-    // 깊이 정렬 스프라이트 수집
+    // 깊이 정렬 스프라이트
     const rm = new Set(st.removed.map((r) => r.key));
     const sprites = [];
     for (const o of OBJECTS) {
       if (o.x < x0 - 1 || o.x > x1 || o.y < y0 - 1 || o.y > y1) continue;
       if (rm.has(`${o.x},${o.y}`)) continue;
-      sprites.push({ y: o.y + 0.9, fn: () => drawObject(ctx, o.type, o.x * tileSize - camX, o.y * tileSize - camY, tileSize, pal) });
+      const ox = o.x * tileSize - camX, oy = o.y * tileSize - camY;
+      sprites.push({ y: o.y + 0.9, fn: () => drawObject(ctx, o, ox, oy, tileSize, pal, wind) });
     }
-    // 밭 작물
     for (let i = 0; i < st.farm.length; i++) {
       const plot = st.farm[i]; if (!plot) continue;
       const px = FARM.x + (i % FARM.cols), py = FARM.y + Math.floor(i / FARM.cols);
       const crop = CROPS[plot.cropId];
       const ratio = Math.min(1, (st.day - plot.plantedDay) / crop.growthDays);
-      const ready = ratio >= 1;
-      sprites.push({ y: py + 0.95, fn: () => drawCrop(ctx, plot.cropId, ratio, ready, px * tileSize - camX, py * tileSize - camY, tileSize) });
+      sprites.push({ y: py + 0.95, fn: () => drawCrop(ctx, plot.cropId, ratio, ratio >= 1, px * tileSize - camX, py * tileSize - camY, tileSize) });
     }
-    // 배치물
     for (const pl of st.placed) {
-      sprites.push({ y: pl.y + 0.95, fn: () => drawPlaceable(ctx, pl.type, pl.x * tileSize - camX, pl.y * tileSize - camY, tileSize, isNight(clock.current)) });
+      sprites.push({ y: pl.y + 0.95, fn: () => drawPlaceable(ctx, pl.type, pl.x * tileSize - camX, pl.y * tileSize - camY, tileSize, night) });
     }
-    // 건물
     for (const b of BUILDINGS) {
-      sprites.push({ y: b.y + b.h, fn: () => drawBuilding(ctx, b, b.x * tileSize - camX, b.y * tileSize - camY, tileSize, isNight(clock.current)) });
+      sprites.push({ y: b.y + b.h, fn: () => drawBuilding(ctx, b, b.x * tileSize - camX, b.y * tileSize - camY, tileSize, night) });
     }
-    // NPC (주민 + 일꾼)
+    const nf = Math.floor(now / 220) % 2;
     for (const n of npcs.current) {
-      sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color) });
+      sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color, nf) });
     }
     for (const n of workerNpcs.current) {
       if (n.x < x0 - 1 || n.x > x1 + 1 || n.y < y0 - 1 || n.y > y1 + 1) continue;
-      sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color) });
+      sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color, nf) });
     }
-    // 플레이어
     const p = player.current;
     sprites.push({ y: p.y, fn: () => drawPlayer(ctx, p.x * tileSize - camX - tileSize / 2, p.y * tileSize - camY - tileSize / 2, tileSize, p.facing, p.frame) });
 
     sprites.sort((a, b) => a.y - b.y);
     for (const s of sprites) s.fn();
 
-    // 배치 모드 커서 (정면 타일 표시)
+    // 배치 모드 커서
     if (placeRef.current) {
       const tx = Math.floor(p.x) + (p.facing === 'left' ? -1 : p.facing === 'right' ? 1 : 0);
       const ty = Math.floor(p.y) + (p.facing === 'up' ? -1 : p.facing === 'down' ? 1 : 0);
@@ -338,20 +363,17 @@ export function useWorld({ state, time, actions }) {
       ctx.strokeRect(tx * tileSize - camX, ty * tileSize - camY, tileSize, tileSize);
     }
 
-    // 낮/밤 조명
-    const ov = nightOverlay(clock.current);
-    if (!ov.endsWith('0)')) {
-      ctx.fillStyle = ov;
-      ctx.fillRect(0, 0, w, h);
-      // 가로등/창문 빛
-      if (isNight(clock.current)) {
-        ctx.globalCompositeOperation = 'lighter';
-        for (const pl of st.placed) {
-          if (PLACEABLES[pl.type]?.light)
-            drawLampGlow(ctx, pl.x * tileSize - camX, pl.y * tileSize - camY, tileSize);
-        }
-        ctx.globalCompositeOperation = 'source-over';
+    // 낮/노을/밤 환경광
+    const ov = ambientOverlay(clock.current);
+    if (ov.alpha > 0.002) { ctx.fillStyle = ov.color; ctx.fillRect(0, 0, w, h); }
+    // 가로등/건물 빛 (밤)
+    if (night) {
+      ctx.globalCompositeOperation = 'lighter';
+      for (const pl of st.placed) {
+        if (PLACEABLES[pl.type]?.light)
+          drawLampGlow(ctx, pl.x * tileSize - camX, pl.y * tileSize - camY, tileSize);
       }
+      ctx.globalCompositeOperation = 'source-over';
     }
   }
 
@@ -365,7 +387,7 @@ export function useWorld({ state, time, actions }) {
     if (modalRef.current) return;
     const cv = canvasRef.current; const rect = cv.getBoundingClientRect();
     const cssX = e.clientX - rect.left, cssY = e.clientY - rect.top;
-    const tileSize = WTILE * zoomRef.current;
+    const tileSize = WTILE * zoomCur.current;
     const tx = Math.floor((cssX + cam.current.x) / tileSize);
     const ty = Math.floor((cssY + cam.current.y) / tileSize);
     interact(tx, ty);
