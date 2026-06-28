@@ -48,7 +48,7 @@ function inRect(x, y, r) { return x >= r.x && x < r.x + r.w && y >= r.y && y < r
 
 // 맵 객체 + 헬퍼 생성
 function makeMap(raw) {
-  const { id, W, H, terrain, objects, buildings, npcs, farm, exits, playerStart } = raw;
+  const { id, W, H, terrain, objects, buildings, npcs, farm, exits, playerStart, pasture } = raw;
 
   const BUILDING_SOLID = new Set();
   const DOORS = new Map();
@@ -63,7 +63,7 @@ function makeMap(raw) {
 
   return {
     id, W, H, TERRAIN: terrain, OBJECTS: objects, BUILDINGS: buildings, NPCS: npcs,
-    FARM: farm, EXITS: exits, PLAYER_START: playerStart,
+    FARM: farm, PASTURE: pasture, EXITS: exits, PLAYER_START: playerStart,
     terrainAt,
     objectAt: (x, y) => SOLID_OBJ.get(`${x},${y}`) || null,
     doorAt: (x, y) => DOORS.get(`${x},${y}`) || null,
@@ -92,7 +92,8 @@ function makeMap(raw) {
 // ---------------- 마을(village) ----------------
 function buildVillage() {
   const W = 44, H = 32;
-  const FARM = { x: 5, y: 20, cols: 3, rows: 4 }; // 3×4=12칸 (시작 9칸=3×3, 개간 시 4번째 줄)
+  const FARM = { x: 5, y: 19, cols: 6, rows: 4 }; // 6×4=24칸 (시작 18칸=6×3, 개간 시 4번째 줄)
+  const PASTURE = { x: 11, y: 25, w: 7, h: 3 }; // 축사 앞마당(가축 방목)
   const rnd = mulberry32(1337);
   const inLake = (x, y) => ((x - 20.5) ** 2) / 110 + ((y - 4.5) ** 2) / 16 < 1;
   const t = [];
@@ -113,6 +114,8 @@ function buildVillage() {
   for (let y = 9; y <= 16; y++) { t[y][9] = T.PATH; t[y][32] = T.PATH; }
   for (let y = 16; y <= 24; y++) t[y][14] = T.PATH;
   for (let j = 0; j < FARM.rows; j++) for (let i = 0; i < FARM.cols; i++) t[FARM.y + j][FARM.x + i] = T.SOIL;
+  // 가축 방목장: 흙바닥(모래 타일)으로 표시
+  for (let j = 0; j < PASTURE.h; j++) for (let i = 0; i < PASTURE.w; i++) t[PASTURE.y + j][PASTURE.x + i] = T.SAND;
   for (const [fx, fy] of [[24, 20], [17, 19], [37, 22], [11, 18]]) if (t[fy][fx] === T.GRASS) t[fy][fx] = T.FLOWERBED;
 
   const buildings = [
@@ -137,6 +140,7 @@ function buildVillage() {
     if (!soft && y >= 15 && y <= 17) return; // 메인 도로 회랑 비움(통행)
     if (BSOLID.has(key) || DOOR.has(key)) return;
     if (inRect(x, y, { x: FARM.x - 1, y: FARM.y - 1, w: FARM.cols + 2, h: FARM.rows + 2 })) return;
+    if (inRect(x, y, { x: PASTURE.x - 1, y: PASTURE.y - 1, w: PASTURE.w + 2, h: PASTURE.h + 2 })) return;
     occ.add(key); objects.push({ type, x, y, seed: Math.floor(r2() * 1000) });
   };
   for (let i = 0; i < 45; i++) place(OBJ.TREE);
@@ -161,7 +165,7 @@ function buildVillage() {
   for (let x = 1; x <= 4; x++) { t[16][x] = T.PATH; t[17][x] = T.PATH; }
   for (let y = 15; y <= 17; y++) { t[y][1] = T.PATH; t[y][2] = T.PATH; exits.push({ x: 1, y, to: 'town', at: { x: 33, y: 13 }, label: '도시로' }); }
 
-  return makeMap({ id: 'village', W, H, terrain: t, objects, buildings, npcs, farm: FARM, exits, playerStart: { x: 21, y: 18 } });
+  return makeMap({ id: 'village', W, H, terrain: t, objects, buildings, npcs, farm: FARM, pasture: PASTURE, exits, playerStart: { x: 21, y: 18 } });
 }
 
 // ---------------- 들판/숲(wild) ----------------

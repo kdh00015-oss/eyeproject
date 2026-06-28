@@ -56,6 +56,7 @@ function grantItems(patch, base, items) {
 import { WEATHERS } from './constants';
 import {
   FARM_PLOTS_MAX,
+  FARM_PLOTS_START,
   RECLAIM_BASE_COST,
   EXPLORE_BASE_COST,
   VILLAGE_TEMPLATES,
@@ -128,7 +129,7 @@ export function gameReducer(state, action) {
     case 'RECLAIM': {
       // 밭 개간 (칸 추가)
       if (state.farm.length >= FARM_PLOTS_MAX) return state;
-      const cost = RECLAIM_BASE_COST * (state.farm.length - 8);
+      const cost = RECLAIM_BASE_COST * Math.max(1, state.farm.length - FARM_PLOTS_START + 1);
       if (state.money < cost) {
         return { ...state, log: log(state, '골드가 부족해 개간할 수 없습니다.', 'warn') };
       }
