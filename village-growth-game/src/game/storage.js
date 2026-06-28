@@ -29,6 +29,8 @@ function mergeBase(data) {
     nextGeneralId: data.nextGeneralId || base.nextGeneralId,
     skills: { ...base.skills, ...(data.skills || {}) },
     class: data.class || base.class,
+    dex: { ...(data.dex || {}) },
+    achieved: Array.isArray(data.achieved) ? data.achieved : [],
   };
 }
 

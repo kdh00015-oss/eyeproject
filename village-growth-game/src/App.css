@@ -795,3 +795,24 @@
 /* ---- NPC 대화 ---- */
 .npc-dialog { display: flex; flex-direction: column; gap: 10px; }
 .npc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---- 도감 + 업적 ---- */
+.dex-body, .ach-body { display: flex; flex-direction: column; gap: 8px; }
+.dex-count { font-size: 12px; opacity: 0.7; font-weight: 400; }
+.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.dex-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px; border-radius: 8px; background: rgba(0,0,0,0.16); border: 1px solid rgba(255,255,255,0.08);
+}
+.dex-cell.unknown { opacity: 0.5; }
+.dex-icon { font-size: 22px; line-height: 1; }
+.dex-name { font-size: 10px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
+.ach-row {
+  display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,0.16); border: 1px solid rgba(255,255,255,0.08);
+}
+.ach-row.done { background: rgba(202,165,58,0.16); border-color: rgba(202,165,58,0.5); }
+.ach-icon { font-size: 22px; text-align: center; }
+.ach-text { display: flex; flex-direction: column; }
+.ach-text small { opacity: 0.7; font-size: 11px; }
+.ach-reward { font-size: 12px; font-weight: 700; color: #e7c54a; white-space: nowrap; }

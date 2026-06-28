@@ -119,6 +119,7 @@ export function gameReducer(state, action) {
         farm,
         inventory,
         skills: xp.skills,
+        dex: { ...state.dex, [crop.id]: true },
         stats: { ...state.stats, harvested: state.stats.harvested + qty },
         log: log(state, `🌾 ${crop.name} ${qty}개를 수확했습니다.${xp.leveledUp ? ` (농업 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
       };
@@ -170,6 +171,7 @@ export function gameReducer(state, action) {
         ...state,
         inventory,
         skills: xp.skills,
+        dex: { ...state.dex, [caught.id]: true },
         stats: { ...state.stats, fished: state.stats.fished + 1 },
         log: log(
           state,
@@ -256,6 +258,7 @@ export function gameReducer(state, action) {
         inventory,
         money: state.money - unit * buyQty,
         pricePressure,
+        dex: { ...state.dex, [goodId]: true },
         log: log(state, `🛒 ${GOODS[goodId]?.name || goodId} ${buyQty}개를 ${unit * buyQty}골드에 구매.`, 'good'),
       };
     }
@@ -385,13 +388,24 @@ export function gameReducer(state, action) {
       const bonus = (state.gear.tool?.id === 'sturdyPick' ? 2 : 0) + cb.mine;
       const gain = 1 + Math.floor(Math.random() * 2) + bonus;
       const xp = addSkillXp(state, 'mining', 7 + gain);
+      // 광물 채굴: 산은 광맥이 풍부. 철광석/마력수정이 확률로 나옴(제작 고리 연결)
+      const map = (action.key || '').split(':')[0];
+      const oreChance = map === 'mountain' ? 0.4 : 0.1;
+      const crystalChance = map === 'mountain' ? 0.07 : 0.015;
+      const inventory = { ...state.inventory };
+      const dex = { ...state.dex };
+      let oreText = '';
+      if (Math.random() < oreChance) { inventory.oreIron = (inventory.oreIron || 0) + 1; dex.oreIron = true; oreText += ' +철광석'; }
+      if (Math.random() < crystalChance) { inventory.crystal = (inventory.crystal || 0) + 1; dex.crystal = true; oreText += ' +마력수정✨'; }
       return {
         ...state,
         stone: state.stone + gain,
+        inventory,
+        dex,
         skills: xp.skills,
         removed: [...state.removed, { key: action.key, type: 'rock', day: state.day }],
         stats: { ...state.stats, mined: state.stats.mined + 1 },
-        log: log(state, `⛏️ 바위를 캐서 돌 ${gain}개를 얻었습니다.${xp.leveledUp ? ` (채광 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
+        log: log(state, `⛏️ 바위를 캐서 돌 ${gain}개를 얻었습니다.${oreText}${xp.leveledUp ? ` (채광 Lv.${xp.leveledUp}!)` : ''}`, oreText ? 'good' : 'good'),
       };
     }
     case 'PLACE': {
