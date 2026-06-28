@@ -3,6 +3,7 @@
 import {
   SEASONS,
   DAYS_PER_SEASON,
+  WEATHERS,
   WEATHER_TABLE,
   RANKS,
   VILLAGE_GRADES,
@@ -15,6 +16,9 @@ import { BUILDINGS } from './buildings';
 import { ANIMALS } from './livestock';
 import { GOODS, EDIBLE_IDS } from './goods';
 import { RESEARCH_FIELDS } from './research';
+import { CROPS } from './crops';
+import { FISHING_SPOTS } from './fishing';
+import { JOBS, OUTPUT } from './workers';
 import { clamp, weightedPick } from './util';
 
 // ---- 시간/계절 ----
@@ -103,6 +107,9 @@ export function advanceDay(state) {
   let log = state.log;
   const day = state.day + 1;
   next.day = day;
+  // 일꾼 급여/씨앗 지출 (마지막 정산에 사용)
+  let wagesTotal = 0;
+  let workerSeedSpend = 0;
 
   // 벌목/채굴된 자연물 respawn (나무 8일, 바위 12일 후 복구)
   const RESPAWN = { tree: 8, rock: 12 };
@@ -120,9 +127,11 @@ export function advanceDay(state) {
     log = pushLog(log, day, '🏜️ 가뭄으로 작물 상태가 좋지 않습니다.', 'warn');
   }
 
-  // 2) 축산: 사료 소비 + 생산
+  // 2) 축산: 사료 소비 + 생산 (목축업자 일꾼이 생산량 증대)
   let feed = state.feed;
-  const livestockBonus = 1 + state.research.livestock * 0.1;
+  const ranchers = state.workers.rancher || 0;
+  const livestockBonus =
+    (1 + state.research.livestock * 0.1) * (1 + ranchers * OUTPUT.rancherBonus);
   let feedShort = false;
   for (const [id, animal] of Object.entries(ANIMALS)) {
     const cell = state.livestock[id];
@@ -149,8 +158,54 @@ export function advanceDay(state) {
     log = pushLog(log, day, '🌿 사료가 부족해 일부 가축이 굶고 있습니다.', 'warn');
   }
 
-  // 3) 주민 식량 소비 (인벤토리의 식용 재화에서 차감)
-  let foodNeed = state.population * FOOD_PER_POP;
+  // 2.5) 일꾼 자동 노동 (자동 생산 + 연구 효율)
+  const workers = state.workers;
+  const totalWorkers = Object.values(workers).reduce((s, v) => s + v, 0);
+  const weather = WEATHERS[pick.id];
+  wagesTotal = Object.entries(workers).reduce((s, [id, n]) => s + n * JOBS[id].wage, 0);
+
+  const laborEff = 1 + state.research.admin * 0.05; // 행정 연구 → 노동 효율
+  if (workers.lumberjack > 0)
+    next.wood = (next.wood || 0) + Math.round(workers.lumberjack * OUTPUT.lumberjackWood * laborEff);
+  if (workers.miner > 0)
+    next.stone = (next.stone || 0) + Math.round(workers.miner * OUTPUT.minerStone * laborEff);
+  if (workers.fisher > 0) {
+    const table = FISHING_SPOTS.lake.fish;
+    const catches = workers.fisher * (OUTPUT.fisherCatch + Math.floor(state.research.fishing / 2));
+    for (let i = 0; i < catches; i++) {
+      const f = weightedPick(table);
+      next.inventory[f.id] = (next.inventory[f.id] || 0) + 1;
+    }
+  }
+  if (workers.farmer > 0) {
+    const farm = state.farm.slice();
+    const agri = 1 + state.research.agriculture * 0.1;
+    let cap = workers.farmer * OUTPUT.farmerPlots;
+    let harvested = 0;
+    for (let i = 0; i < farm.length && cap > 0; i++) {
+      const plot = farm[i];
+      if (!plot) continue;
+      const crop = CROPS[plot.cropId];
+      if (day - plot.plantedDay < crop.growthDays) continue; // 아직 미성숙
+      const qty = Math.max(1, Math.round(crop.yield * weather.crop * agri));
+      next.inventory[crop.id] = (next.inventory[crop.id] || 0) + qty;
+      harvested += 1;
+      cap -= 1;
+      // 같은 계절이고 씨앗값이 감당되면 재파종
+      if (crop.seasons.includes(season.id) && state.money - workerSeedSpend >= crop.seedCost) {
+        farm[i] = { cropId: plot.cropId, plantedDay: day };
+        workerSeedSpend += crop.seedCost;
+      } else {
+        farm[i] = null;
+      }
+    }
+    next.farm = farm;
+    if (harvested > 0)
+      log = pushLog(log, day, `🧑‍🌾 농부가 밭 ${harvested}칸을 자동 수확했습니다.`, 'good');
+  }
+
+  // 3) 주민·일꾼 식량 소비 (인벤토리의 식용 재화에서 차감)
+  let foodNeed = (state.population + totalWorkers) * FOOD_PER_POP;
   for (const id of EDIBLE_IDS) {
     if (foodNeed <= 0) break;
     const have = next.inventory[id] || 0;
@@ -212,7 +267,17 @@ export function advanceDay(state) {
     influenceGain += tpl.influence * 0.05;
   }
 
-  next.money = state.money + tax + tradeIncome;
+  // 일꾼 급여/씨앗 정산 — 못 주면 일꾼이 이탈
+  const gross = state.money + tax + tradeIncome;
+  const owed = wagesTotal + workerSeedSpend;
+  next.money = Math.max(0, gross - owed);
+  if (owed > gross && totalWorkers > 0) {
+    const w2 = { ...workers };
+    const cut = Object.keys(w2).filter((k) => w2[k] > 0).sort((a, b) => w2[b] - w2[a])[0];
+    if (cut) w2[cut] -= 1;
+    next.workers = w2;
+    log = pushLog(log, day, '💸 급여를 주지 못해 일꾼이 마을을 떠났습니다!', 'warn');
+  }
   next.influence = state.influence + influenceGain;
 
   // 8) 시장 가격 변동 (기본가의 0.6~1.5 사이에서 랜덤 워크)

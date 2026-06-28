@@ -67,6 +67,8 @@ export function createInitialState() {
     // 도구로 모으는 자원
     wood: 10,
     stone: 4,
+    // 고용한 일꾼 (직종별 인원)
+    workers: { farmer: 0, fisher: 0, lumberjack: 0, miner: 0, rancher: 0 },
     // 월드: 벌목/채굴된 자연물(respawn 추적) + 배치한 장식물
     removed: [], // [{ key, type, day }]
     placed: [], // [{ type, x, y }]

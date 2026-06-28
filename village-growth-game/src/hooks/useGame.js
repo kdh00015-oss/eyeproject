@@ -55,6 +55,8 @@ export function useGame() {
       research: (field) => dispatch({ type: 'RESEARCH', field }),
       explore: () => dispatch({ type: 'EXPLORE' }),
       openTrade: (villageId) => dispatch({ type: 'OPEN_TRADE', villageId }),
+      hire: (job) => dispatch({ type: 'HIRE', job }),
+      fire: (job) => dispatch({ type: 'FIRE', job }),
       setTax: (rate) => dispatch({ type: 'SET_TAX', rate }),
       newGame: () => dispatch({ type: 'NEW_GAME' }),
     }),

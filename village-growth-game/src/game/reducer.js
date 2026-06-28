@@ -12,6 +12,7 @@ import { FISHING_SPOTS } from './fishing';
 import { ANIMALS } from './livestock';
 import { BUILDINGS, buildingCost } from './buildings';
 import { RESEARCH_FIELDS, researchCost, MAX_RESEARCH_LEVEL } from './research';
+import { JOBS } from './workers';
 import { WEATHERS } from './constants';
 import {
   FARM_PLOTS_MAX,
@@ -321,6 +322,34 @@ export function gameReducer(state, action) {
         stone: state.stone - cost.stone,
         placed: [...state.placed, { type: ptype, x, y }],
         log: log(state, `🏗️ 구조물을 설치했습니다.`, 'good'),
+      };
+    }
+
+    // --- 고용 ---
+    case 'HIRE': {
+      const job = JOBS[action.job];
+      const derived = computeDerived(state);
+      const totalW = Object.values(state.workers).reduce((s, v) => s + v, 0);
+      if (Math.floor(state.population) + totalW + 1 > derived.maxPop) {
+        return { ...state, log: log(state, '주거 공간이 부족합니다. 집을 더 지으세요.', 'warn') };
+      }
+      if (state.money < job.hire) {
+        return { ...state, log: log(state, `고용비(${job.hire}골드)가 부족합니다.`, 'warn') };
+      }
+      return {
+        ...state,
+        money: state.money - job.hire,
+        workers: { ...state.workers, [job.id]: state.workers[job.id] + 1 },
+        log: log(state, `${job.icon} ${job.name}을(를) 고용했습니다.`, 'good'),
+      };
+    }
+    case 'FIRE': {
+      const job = JOBS[action.job];
+      if (state.workers[job.id] <= 0) return state;
+      return {
+        ...state,
+        workers: { ...state.workers, [job.id]: state.workers[job.id] - 1 },
+        log: log(state, `${job.name}을(를) 해고했습니다.`, 'info'),
       };
     }
 

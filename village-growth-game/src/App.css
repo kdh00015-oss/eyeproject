@@ -372,6 +372,16 @@
 .animal-detail small { color: var(--text-dim); font-size: 11px; }
 .animal-actions { display: flex; gap: 6px; margin-top: 8px; }
 
+/* 고용소 */
+.worker-summary { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.worker-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.worker-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+.worker-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.worker-name { font-weight: 700; }
+.worker-count { font-size: 12px; color: var(--text-dim); }
+.worker-desc, .worker-cost { display: block; color: var(--text-dim); font-size: 11px; margin-bottom: 2px; }
+.worker-actions { display: flex; gap: 6px; margin-top: 8px; }
+
 /* 건설 / 연구 공통 */
 .building-desc, .research-desc { display: block; color: var(--text-dim); font-size: 11px; margin-bottom: 4px; }
 .lv { font-size: 12px; color: var(--accent); font-weight: 700; }

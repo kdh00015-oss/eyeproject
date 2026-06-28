@@ -28,6 +28,7 @@ export function loadGame() {
       livestock: { ...base.livestock, ...data.livestock },
       inventory: { ...base.inventory, ...data.inventory },
       prices: { ...base.prices, ...data.prices },
+      workers: { ...base.workers, ...data.workers },
     };
   } catch {
     return null;

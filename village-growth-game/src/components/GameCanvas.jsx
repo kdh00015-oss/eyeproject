@@ -15,10 +15,11 @@ import BuildPanel from './panels/BuildPanel';
 import ResearchPanel from './panels/ResearchPanel';
 import MarketPanel from './panels/MarketPanel';
 import TradePanel from './panels/TradePanel';
+import WorkersPanel from './panels/WorkersPanel';
 
 const PANELS = {
   fishing: FishingPanel, livestock: LivestockPanel, build: BuildPanel,
-  research: ResearchPanel, market: MarketPanel, trade: TradePanel,
+  research: ResearchPanel, market: MarketPanel, trade: TradePanel, workers: WorkersPanel,
 };
 const TOOLS = [
   { id: 'axe', icon: '🪓', name: '도끼' },

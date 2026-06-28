@@ -30,6 +30,7 @@ export const FARM = { x: 5, y: 20, cols: 4, rows: 4 };
 // 고정(진입 가능) 건물 — 문(door)으로 들어가면 패널이 열린다.
 export const BUILDINGS = [
   { id: 'townhall', name: '마을회관', panel: 'build', x: 20, y: 13, w: 3, h: 3, door: { x: 21, y: 16 } },
+  { id: 'labor', name: '고용소', panel: 'workers', x: 24, y: 13, w: 2, h: 2, door: { x: 24, y: 16 } },
   { id: 'market', name: '시장', panel: 'market', x: 27, y: 14, w: 3, h: 2, door: { x: 28, y: 16 } },
   { id: 'dock', name: '낚시터', panel: 'fishing', x: 9, y: 7, w: 2, h: 2, door: { x: 9, y: 9 } },
   { id: 'port', name: '항구', panel: 'trade', x: 31, y: 7, w: 3, h: 2, door: { x: 32, y: 9 } },

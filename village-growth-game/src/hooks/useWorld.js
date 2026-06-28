@@ -11,6 +11,7 @@ import {
 } from '../game/world/draw';
 import { paletteFor, nightOverlay, isNight, clockString } from '../game/world/palette';
 import { CROPS } from '../game/crops';
+import { JOBS, JOB_SITE } from '../game/workers';
 
 const DAY_REAL_SEC = 100; // 실제 100초 = 게임 하루
 const SPEED = { pause: 0, x1: 1, x2: 2.5 };
@@ -31,6 +32,7 @@ export function useWorld({ state, time, actions }) {
   const player = useRef({ x: PLAYER_START.x + 0.5, y: PLAYER_START.y + 0.5, facing: 'down', frame: 0, moveT: 0 });
   const cam = useRef({ x: 0, y: 0 });
   const npcs = useRef(NPCS.map((n) => ({ ...n, x: n.path[0][0] + 0.5, y: n.path[0][1] + 0.5, wp: 0, wait: 0 })));
+  const workerNpcs = useRef([]);
   const clock = useRef(0.32); // 0~1 하루 진행 (아침 시작)
   const keys = useRef(new Set());
   const cooldown = useRef(0);
@@ -134,6 +136,27 @@ export function useWorld({ state, time, actions }) {
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
   }, [interactFront]);
 
+  // 고용한 일꾼을 맵 위 NPC로 표현 (최대 12명 렌더)
+  const workersKey = JSON.stringify(state.workers);
+  useEffect(() => {
+    const arr = [];
+    let total = 0;
+    for (const job of Object.keys(state.workers)) {
+      const n = state.workers[job];
+      const site = JOB_SITE[JOBS[job].site];
+      for (let i = 0; i < n && total < 12; i++, total++) {
+        const ox = (total % 3) - 1, oy = Math.floor(total / 3) % 2;
+        const cx = site.x + ox, cy = site.y + oy;
+        arr.push({
+          color: JOBS[job].color, x: cx + 0.5, y: cy + 0.5, wp: 0, wait: i * 0.3,
+          path: [[cx, cy], [cx + 1, cy], [cx + 1, cy + 1], [cx, cy + 1]],
+        });
+      }
+    }
+    workerNpcs.current = arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workersKey]);
+
   // 캔버스 크기 맞추기
   useEffect(() => {
     const fit = () => {
@@ -209,16 +232,18 @@ export function useWorld({ state, time, actions }) {
       } else { p.frame = 0; }
     }
 
-    // NPC 이동
-    for (const n of npcs.current) {
-      if (n.wait > 0) { n.wait -= dt; continue; }
+    // NPC 이동 (주민 + 고용 일꾼)
+    const stepNpc = (n, speed) => {
+      if (n.wait > 0) { n.wait -= dt; return; }
       const [tx, ty] = n.path[n.wp];
       const gx = tx + 0.5, gy = ty + 0.5;
       const ddx = gx - n.x, ddy = gy - n.y;
       const d = Math.hypot(ddx, ddy);
       if (d < 0.08) { n.wp = (n.wp + 1) % n.path.length; n.wait = 0.6 + Math.random(); }
-      else { const s = 2.2 * dt; n.x += (ddx / d) * s; n.y += (ddy / d) * s; }
-    }
+      else { const s = speed * dt; n.x += (ddx / d) * s; n.y += (ddy / d) * s; }
+    };
+    for (const n of npcs.current) stepNpc(n, 2.2);
+    for (const n of workerNpcs.current) stepNpc(n, 1.8);
 
     // 시계 (낮/밤) → 하루 경과 시 시뮬 진행
     const mult = SPEED[speedRef.current];
@@ -293,8 +318,12 @@ export function useWorld({ state, time, actions }) {
     for (const b of BUILDINGS) {
       sprites.push({ y: b.y + b.h, fn: () => drawBuilding(ctx, b, b.x * tileSize - camX, b.y * tileSize - camY, tileSize, isNight(clock.current)) });
     }
-    // NPC
+    // NPC (주민 + 일꾼)
     for (const n of npcs.current) {
+      sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color) });
+    }
+    for (const n of workerNpcs.current) {
+      if (n.x < x0 - 1 || n.x > x1 + 1 || n.y < y0 - 1 || n.y > y1 + 1) continue;
       sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color) });
     }
     // 플레이어
