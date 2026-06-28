@@ -452,6 +452,27 @@ export function gameReducer(state, action) {
       };
     }
 
+    case 'REMOVE_PLACED': {
+      // 배치한 구조물 철거 → 자원 전액 환급 (다른 곳에 다시 지어 '이동' 가능)
+      const { x, y, map } = action;
+      const m = map || 'village';
+      const idx = state.placed.findIndex((p) => p.x === x && p.y === y && (p.map || 'village') === m);
+      if (idx < 0) return state;
+      const pl = state.placed[idx];
+      const def = PLACEABLES[pl.type];
+      const c = (def && def.cost) || {};
+      const placed = state.placed.slice();
+      placed.splice(idx, 1);
+      return {
+        ...state,
+        placed,
+        money: state.money + (c.gold || 0),
+        wood: state.wood + (c.wood || 0),
+        stone: state.stone + (c.stone || 0),
+        log: log(state, `🔨 ${def ? def.name : '구조물'}을(를) 철거하고 자원을 돌려받았습니다.`, 'info'),
+      };
+    }
+
     // --- 고용 ---
     case 'HIRE': {
       const job = JOBS[action.job];
