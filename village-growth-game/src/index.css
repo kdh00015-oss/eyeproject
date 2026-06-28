@@ -1,0 +1,42 @@
+:root {
+  --sans: system-ui, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', sans-serif;
+
+  --bg: #1b2230;
+  --bg-soft: #232c3d;
+  --panel: #29344a;
+  --border: #3a465f;
+  --text: #e6ecf5;
+  --text-dim: #9fb0c8;
+  --accent: #6dd36d;
+  --accent-2: #f4c542;
+  --danger: #e0604a;
+  --grass: #3f7a4d;
+  --grass-dark: #356641;
+
+  font-family: var(--sans);
+  color: var(--text);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(1200px 600px at 50% -10%, #2b3a55, transparent),
+    var(--bg);
+  min-height: 100svh;
+}
+
+#root {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
