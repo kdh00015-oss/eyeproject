@@ -645,6 +645,11 @@ export function gameReducer(state, action) {
       return { ...state, army, log: log(state, `⚔️ '${tpl.name}' 공격 실패... 병력을 잃었습니다.`, 'warn') };
     }
 
+    case 'VISIT_MAP': {
+      if (!action.map || (state.visited && state.visited[action.map])) return state;
+      return { ...state, visited: { ...state.visited, [action.map]: true } };
+    }
+
     // --- 행정 ---
     case 'SET_TAX':
       return { ...state, taxRate: clamp(action.rate, 0, 40) };

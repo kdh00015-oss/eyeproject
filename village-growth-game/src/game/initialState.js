@@ -104,6 +104,9 @@ export function createInitialState(classId) {
     achieved: [],
     // 가축장 확장 레벨 (수용 마릿수)
     ranchLevel: 1,
+    // 대시보드: 일별 기록(그래프) + 방문한 지역
+    history: [],
+    visited: { village: true },
     // 하루 행동 제한
     fishUsed: 0,
     // 날씨 (advanceDay 첫 호출 전 기본값)

@@ -99,6 +99,7 @@ export function useWorld({ state, time, actions }) {
   const travel = useCallback((to, at) => {
     mapIdRef.current = to;
     setMapId(to);
+    if (actions.visitMap) actions.visitMap(to);
     player.current.x = at.x + 0.5;
     player.current.y = at.y + 0.5;
     npcs.current = MAPS[to].NPCS.map((n) => ({ ...n, x: n.path[0][0] + 0.5, y: n.path[0][1] + 0.5, wp: 0, wait: 0 }));
@@ -107,6 +108,7 @@ export function useWorld({ state, time, actions }) {
     travelCd.current = 0.6;
     cam.current.x = at.x * WTILE * zoomCur.current - size.current.w / 2;
     cam.current.y = at.y * WTILE * zoomCur.current - size.current.h / 2;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 전체 지도에서 클릭으로 지역 이동 (현재 맵의 출구 도착점 사용 → 없으면 시작점)
