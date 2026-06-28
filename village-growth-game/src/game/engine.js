@@ -477,6 +477,12 @@ export function advanceDay(state) {
   // 10) 하루 행동 제한 초기화
   next.fishUsed = 0;
 
+  // 10.5) 대시보드용 일별 기록 (최근 150일 롤링)
+  next.history = [
+    ...(state.history || []),
+    { d: day, m: Math.round(next.money), p: Math.floor(next.population), f: Math.round(next.fame || 0), b: newDerived.buildingLevels },
+  ].slice(-150);
+
   // 11) 업적 달성 체크 + 보상 지급 (한 번만)
   const wins = newlyAchieved(next);
   if (wins.length) {

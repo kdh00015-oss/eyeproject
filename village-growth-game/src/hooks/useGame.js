@@ -70,6 +70,7 @@ export function useGame() {
       combatResult: (payload) => dispatch({ type: 'COMBAT_RESULT', ...payload }),
       claimQuest: (id) => dispatch({ type: 'CLAIM_QUEST', id }),
       setTax: (rate) => dispatch({ type: 'SET_TAX', rate }),
+      visitMap: (map) => dispatch({ type: 'VISIT_MAP', map }),
       newGame: (cls) => dispatch({ type: 'NEW_GAME', class: cls }),
     }),
     []
