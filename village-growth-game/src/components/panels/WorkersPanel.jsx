@@ -16,10 +16,9 @@ function xpInfo(xp) {
 function dailyOutput(w, state) {
   if (w.resting) return null;
   const mult = levelMult(levelFromXp(w.xp));
-  const laborEff = 1 + (state.research.admin || 0) * 0.05;
   switch (w.job) {
-    case 'lumberjack': return { icon: '🪵', label: '목재', amount: Math.round(OUTPUT.lumberjackWood * mult * laborEff), unit: '/일' };
-    case 'miner': return { icon: '🪨', label: '돌', amount: Math.round(OUTPUT.minerStone * mult * laborEff), unit: '/일' };
+    case 'lumberjack': return { icon: '🪵', label: '목재', amount: 2 + levelFromXp(w.xp), unit: '/운반', live: true };
+    case 'miner': return { icon: '🪨', label: '돌', amount: 2 + levelFromXp(w.xp), unit: '/운반', live: true };
     case 'fisher': return { icon: '🐟', label: '물고기', amount: Math.round((OUTPUT.fisherCatch + Math.floor((state.research.fishing || 0) / 2)) * mult), unit: '마리/일' };
     case 'farmer': return { icon: '🌾', label: '자동수확', amount: Math.floor(OUTPUT.farmerPlots * mult), unit: '칸/일' };
     case 'rancher': return { icon: '🐄', label: '축산물', amount: Math.round(OUTPUT.rancherBonus * mult * 100), unit: '%↑' };

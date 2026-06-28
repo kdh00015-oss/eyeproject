@@ -493,6 +493,20 @@ export function gameReducer(state, action) {
         log: log(state, `${job.icon} ${job.name} '${name}'을(를) 고용했습니다.`, 'good'),
       };
     }
+    case 'WORKER_GATHER': {
+      // 일꾼이 채집해 운반한 자원을 창고에 입고 + 경험치 (실시간 채집)
+      const { kind, amount, id } = action;
+      if (!amount) return state;
+      const patch = {};
+      if (kind === 'wood') patch.wood = state.wood + amount;
+      else if (kind === 'stone') patch.stone = state.stone + amount;
+      else return state;
+      let workers = state.workers;
+      if (id != null) {
+        workers = state.workers.map((w) => w.id === id ? { ...w, xp: w.xp + amount * 3 } : w);
+      }
+      return { ...state, ...patch, workers, stats: { ...state.stats, [kind === 'wood' ? 'chopped' : 'mined']: state.stats[kind === 'wood' ? 'chopped' : 'mined'] + 1 } };
+    }
     case 'TRAIN_WORKER': {
       // 골드로 일꾼 레벨업 훈련 (즉시 다음 레벨)
       const w = state.workers.find((x) => x.id === action.id);

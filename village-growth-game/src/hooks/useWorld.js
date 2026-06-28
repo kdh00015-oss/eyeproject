@@ -9,7 +9,7 @@ import { paletteFor, ambientOverlay, isNight, clockString } from '../game/world/
 import { CROPS } from '../game/crops';
 import { cbonus } from '../game/classes';
 import { ANIMAL_LIST } from '../game/livestock';
-import { JOBS, JOB_SITE } from '../game/workers';
+import { JOBS, JOB_SITE, levelFromXp } from '../game/workers';
 
 const DAY_REAL_SEC = 420; // 하루 길이(초) — 더 천천히 흐르게
 const SPEED = { pause: 0, x1: 1, x2: 2.5 };
@@ -279,8 +279,8 @@ export function useWorld({ state, time, actions }) {
         const ox = (total % 3) - 1, oy = Math.floor(total / 3) % 2;
         const cx = site.x + ox, cy = site.y + oy;
         arr.push({
-          color: job.color, icon: job.icon, name: w.name, resting: w.resting,
-          x: cx + 0.5, y: cy + 0.5, wp: 0, wait: total * 0.3,
+          id: w.id, job: w.job, color: job.color, icon: job.icon, name: w.name, resting: w.resting,
+          x: cx + 0.5, y: cy + 0.5, wp: 0, wait: total * 0.3, carry: 0, phase: 'seek', target: null, gatherT: 0,
           path: [[cx, cy], [cx + 1, cy], [cx + 1, cy + 1], [cx, cy + 1]],
         });
       });
@@ -327,6 +327,51 @@ export function useWorld({ state, time, actions }) {
     return true;
   }
 
+  // 일꾼이 목표로 이동(직선) — 남은 거리 반환
+  function moveTo(n, t, dist) {
+    const dx = t.x - n.x, dy = t.y - n.y, d = Math.hypot(dx, dy) || 1;
+    if (d > 0.04) { const s = Math.min(d, dist); n.x += (dx / d) * s; n.y += (dy / d) * s; }
+    if (d > 0.3) n.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
+    return d;
+  }
+
+  const DEPOT = { x: 21.5, y: 18.5 }; // 자원 입고 지점(마을 중앙)
+
+  // 나무꾼/광부 채집 AI: 레벨 → 이동속도·짐량(carry capacity)
+  function gatherStep(n, dt, M, rm, mult) {
+    if (mult <= 0) return; // 정지 중엔 멈춤
+    const wk = stateRef.current.workers.find((x) => x.id === n.id);
+    if (!wk) return;
+    if (wk.resting) { n.carry = 0; n.phase = 'seek'; n.target = null; return; }
+    const lvl = levelFromXp(wk.xp);
+    const speed = 1.5 * (1 + (lvl - 1) * 0.14) * mult; // 레벨↑ → 이동 빠름
+    const cap = 2 + lvl; // 레벨↑ → 짐량 많음
+    const edt = dt;
+    const otype = n.job === 'lumberjack' ? 'tree' : 'rock';
+    const kind = n.job === 'lumberjack' ? 'wood' : 'stone';
+    if (n.phase === 'gather') {
+      n.gatherT -= edt * mult;
+      if (n.gatherT <= 0) { n.carry = cap; n.phase = 'haul'; n.target = { x: DEPOT.x, y: DEPOT.y }; }
+    } else if (n.phase === 'haul') {
+      const d = moveTo(n, n.target, speed * edt);
+      if (d < 0.6) { if (n.carry > 0 && actions.workerGather) actions.workerGather(kind, n.carry, n.id); n.carry = 0; n.phase = 'seek'; n.target = null; }
+    } else { // seek
+      if (!n.target) {
+        let best = null, bd = 1e9;
+        for (const o of M.OBJECTS) {
+          if (o.type !== otype) continue;
+          if (rm.has(`${o.x},${o.y}`)) continue;
+          const d = (o.x + 0.5 - n.x) ** 2 + (o.y + 0.5 - n.y) ** 2;
+          if (d < bd) { bd = d; best = o; }
+        }
+        n.target = best ? { x: best.x + 0.5, y: best.y + 0.5 } : null;
+      }
+      if (!n.target) return;
+      const d = moveTo(n, n.target, speed * edt);
+      if (d < 0.7) { n.phase = 'gather'; n.gatherT = 1.8; n.target = null; }
+    }
+  }
+
   function update(dt, now) {
     if (cooldown.current > 0) cooldown.current -= dt;
     if (travelCd.current > 0) travelCd.current -= dt;
@@ -369,7 +414,13 @@ export function useWorld({ state, time, actions }) {
       else { const s = speed * dt; n.x += (ddx / d) * s; n.y += (ddy / d) * s; }
     };
     for (const n of npcs.current) stepNpc(n, 2.2);
-    for (const n of workerNpcs.current) stepNpc(n, 1.8);
+
+    // 일꾼: 나무꾼/광부는 실시간 채집(노드로 이동→채집→창고 입고), 그 외는 기존 순회
+    const wmult = SPEED[speedRef.current];
+    for (const n of workerNpcs.current) {
+      if (n.job === 'lumberjack' || n.job === 'miner') gatherStep(n, dt, M, rm, wmult);
+      else stepNpc(n, 1.8);
+    }
 
     const mult = SPEED[speedRef.current];
     if (mult > 0) { clock.current += (dt / DAY_REAL_SEC) * mult; if (clock.current >= 1) { clock.current -= 1; actions.nextDay(); } }
@@ -516,12 +567,13 @@ export function useWorld({ state, time, actions }) {
       y: n.y, fn: () => {
         const sx = n.x * tileSize - camX, sy = n.y * tileSize - camY;
         drawNPC(ctx, sx - tileSize / 2, sy - tileSize / 2, tileSize, n.color, nf);
-        // 머리 위 직업 아이콘 + 일하는 표시(작업 중엔 위아래로 까딱, 휴식 중엔 💤)
-        const working = !n.resting;
-        const swing = working ? Math.sin(now / 120 + n.x) * tileSize * 0.06 : 0;
+        // 머리 위: 운반 중이면 자원 아이콘, 채집 중엔 직업 아이콘이 까딱
+        const carrying = n.carry > 0;
+        const head = carrying ? (n.job === 'lumberjack' ? '🪵' : '🪨') : n.icon;
+        const swing = Math.sin(now / 120 + n.x) * tileSize * 0.06;
         ctx.font = `${Math.round(tileSize * 0.42)}px sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText(n.resting ? '💤' : n.icon, sx, sy - tileSize * 0.62 + swing);
+        ctx.fillText(head, sx, sy - tileSize * 0.62 + swing);
         ctx.textAlign = 'left';
       },
     });
