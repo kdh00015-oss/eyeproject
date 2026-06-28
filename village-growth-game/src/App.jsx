@@ -1,45 +1,17 @@
 import './App.css';
 import { useGame } from './hooks/useGame';
-import TopBar from './components/TopBar';
-import ResourcePanel from './components/ResourcePanel';
-import WorldMap from './components/world/WorldMap';
-import InfoPanel from './components/InfoPanel';
-import LogPanel from './components/LogPanel';
+import GameCanvas from './components/GameCanvas';
 
 export default function App() {
-  const { state, derived, time, actions, speedId, setSpeedId, save } = useGame();
-
-  const handleSave = () => {
-    save();
-    // 간단한 피드백
-    window.alert('💾 저장했습니다!');
-  };
-
-  const handleNewGame = () => {
-    if (window.confirm('정말 새로 시작할까요? 현재 마을 진행 상황이 사라집니다.')) {
-      actions.newGame();
-    }
-  };
+  const { state, derived, time, actions, save } = useGame();
 
   return (
-    <div className="app">
-      <TopBar
-        state={state}
-        derived={derived}
-        time={time}
-        speedId={speedId}
-        setSpeedId={setSpeedId}
-        onSave={handleSave}
-        onNewGame={handleNewGame}
-      />
-
-      <div className="layout">
-        <ResourcePanel state={state} derived={derived} />
-        <WorldMap state={state} derived={derived} time={time} actions={actions} />
-        <InfoPanel state={state} derived={derived} />
-      </div>
-
-      <LogPanel log={state.log} />
-    </div>
+    <GameCanvas
+      state={state}
+      derived={derived}
+      time={time}
+      actions={actions}
+      onSave={() => { save(); }}
+    />
   );
 }

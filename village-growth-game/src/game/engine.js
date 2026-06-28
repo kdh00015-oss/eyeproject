@@ -104,6 +104,10 @@ export function advanceDay(state) {
   const day = state.day + 1;
   next.day = day;
 
+  // 벌목/채굴된 자연물 respawn (나무 8일, 바위 12일 후 복구)
+  const RESPAWN = { tree: 8, rock: 12 };
+  next.removed = state.removed.filter((r) => day - r.day < (RESPAWN[r.type] || 8));
+
   const { season } = seasonInfo(day);
   const derived = computeDerived(state);
 

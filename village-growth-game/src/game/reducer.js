@@ -289,6 +289,41 @@ export function gameReducer(state, action) {
       };
     }
 
+    // --- 월드: 도구 행동 ---
+    case 'CHOP': {
+      // 나무 벌목 → 나무 자원
+      const gain = 2 + Math.floor(Math.random() * 2);
+      return {
+        ...state,
+        wood: state.wood + gain,
+        removed: [...state.removed, { key: action.key, type: 'tree', day: state.day }],
+        log: log(state, `🪓 나무를 베어 목재 ${gain}개를 얻었습니다.`, 'good'),
+      };
+    }
+    case 'MINE': {
+      // 바위 채굴 → 돌 자원
+      const gain = 1 + Math.floor(Math.random() * 2);
+      return {
+        ...state,
+        stone: state.stone + gain,
+        removed: [...state.removed, { key: action.key, type: 'rock', day: state.day }],
+        log: log(state, `⛏️ 바위를 캐서 돌 ${gain}개를 얻었습니다.`, 'good'),
+      };
+    }
+    case 'PLACE': {
+      const { ptype, x, y, cost } = action;
+      if (state.wood < cost.wood || state.stone < cost.stone) {
+        return { ...state, log: log(state, '자원이 부족합니다. (나무/돌 필요)', 'warn') };
+      }
+      return {
+        ...state,
+        wood: state.wood - cost.wood,
+        stone: state.stone - cost.stone,
+        placed: [...state.placed, { type: ptype, x, y }],
+        log: log(state, `🏗️ 구조물을 설치했습니다.`, 'good'),
+      };
+    }
+
     // --- 행정 ---
     case 'SET_TAX':
       return { ...state, taxRate: clamp(action.rate, 0, 40) };

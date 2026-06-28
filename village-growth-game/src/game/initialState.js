@@ -64,6 +64,12 @@ export function createInitialState() {
     inventory,
     feed,
     prices,
+    // 도구로 모으는 자원
+    wood: 10,
+    stone: 4,
+    // 월드: 벌목/채굴된 자연물(respawn 추적) + 배치한 장식물
+    removed: [], // [{ key, type, day }]
+    placed: [], // [{ type, x, y }]
     // 하루 행동 제한
     fishUsed: 0,
     // 날씨 (advanceDay 첫 호출 전 기본값)
