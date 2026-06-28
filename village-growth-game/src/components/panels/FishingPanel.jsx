@@ -1,17 +1,12 @@
 // 낚시 탭: 낚시터별 낚시 + 잡히는 물고기 안내
 
 import { SPOT_LIST } from '../../game/fishing';
-import { BASE_FISH_PER_DAY } from '../../game/constants';
 
 export default function FishingPanel({ state, actions }) {
-  const maxFish = BASE_FISH_PER_DAY + state.research.fishing;
-  const left = Math.max(0, maxFish - state.fishUsed);
-
   return (
     <div className="fishing">
       <p className="hint">
-        오늘 남은 낚시 횟수: <b>{left}/{maxFish}</b> · 날짜가 바뀌면 초기화됩니다.
-        (어업 연구로 횟수와 희귀 확률이 늘어납니다)
+        낚시터를 골라 자유롭게 낚시하세요. (어업 연구로 희귀 물고기 확률이 올라갑니다)
       </p>
 
       <div className="spot-list">
@@ -35,7 +30,7 @@ export default function FishingPanel({ state, actions }) {
               </ul>
               <button
                 className="wide-btn"
-                disabled={locked || left <= 0}
+                disabled={locked}
                 onClick={() => actions.fish(spot.id)}
               >
                 🎣 {spot.name}에서 낚시

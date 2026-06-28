@@ -61,6 +61,8 @@ export function useWorld({ state, time, actions }) {
   const miniRef = useRef(null);
   const [talkNpc, setTalkNpc] = useState(null);
   const talkRef = useRef(talkNpc); talkRef.current = talkNpc;
+  const [run, setRun] = useState(false);
+  const runRef = useRef(run); runRef.current = run;
   const hits = useRef(new Map()); // 노드별 타격 누적
   const hitFx = useRef(null); // 최근 타격 연출 {key,t}
 
@@ -280,10 +282,11 @@ export function useWorld({ state, time, actions }) {
         dx /= len; dy /= len;
         if (Math.abs(dx) > Math.abs(dy)) p.facing = dx < 0 ? 'left' : 'right';
         else p.facing = dy < 0 ? 'up' : 'down';
-        const step = PLAYER_SPEED * dt;
+        const sprint = (keys.current.has('shift') || runRef.current) ? 1.85 : 1; // 빠른 달리기
+        const step = PLAYER_SPEED * sprint * dt;
         if (moveAxis(p.x + dx * step, p.y, M, rm, ps)) p.x += dx * step;
         if (moveAxis(p.x, p.y + dy * step, M, rm, ps)) p.y += dy * step;
-        p.moveT += dt; p.frame = Math.floor(p.moveT * 8) % 2;
+        p.moveT += dt; p.frame = Math.floor(p.moveT * (sprint > 1 ? 12 : 8)) % 2;
         // 출구 → 맵 이동 (경계는 자동, 건물 문은 행동키로만)
         if (travelCd.current <= 0) {
           const ex = M.exitAt(Math.floor(p.x), Math.floor(p.y));
@@ -484,7 +487,7 @@ export function useWorld({ state, time, actions }) {
     zoom, setZoom, speedId, setSpeedId,
     activeBuilding, setActiveBuilding,
     hud, showMap, setShowMap, miniRef,
-    talkNpc, setTalkNpc,
+    talkNpc, setTalkNpc, run, setRun,
     mapId, mapName: mapId === 'village' ? '마을' : '들판',
     joy: { joyStart, joyMove, joyEnd },
     interactFront,
