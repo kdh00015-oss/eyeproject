@@ -135,14 +135,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
           <button className="mini-btn" onClick={() => w.setZoom((z) => Math.max(0.8, z - 0.2))}>➖</button>
           <button className={'mini-btn' + (w.showMap ? ' on' : '')} onClick={() => w.setShowMap((v) => !v)} title="현재 맵 미니맵 (M)">🗺️</button>
           <button className={'mini-btn' + (worldOpen ? ' on' : '')} onClick={() => setWorldOpen((v) => !v)} title="전체 지도 · 빠른 이동">🌐</button>
-          <button className={'mini-btn' + (win === 'inv' ? ' on' : '')} onClick={() => setWin((v) => v === 'inv' ? null : 'inv')}>🎒</button>
-          <button className={'mini-btn' + (win === 'craft' ? ' on' : '')} onClick={() => setWin((v) => v === 'craft' ? null : 'craft')}>⚒️</button>
-          <button className={'mini-btn' + (win === 'quest' ? ' on' : '')} onClick={() => setWin((v) => v === 'quest' ? null : 'quest')}>📜</button>
-          <button className={'mini-btn' + (win === 'hunt' ? ' on' : '')} onClick={() => setWin((v) => v === 'hunt' ? null : 'hunt')}>⚔️</button>
-          <button className={'mini-btn' + (win === 'war' ? ' on' : '')} onClick={() => setWin((v) => v === 'war' ? null : 'war')}>🏰</button>
-          <button className={'mini-btn' + (win === 'dex' ? ' on' : '')} onClick={() => setWin((v) => v === 'dex' ? null : 'dex')} title="도감·업적 (B)">📖</button>
-          <button className={'mini-btn' + (win === 'dash' ? ' on' : '')} onClick={() => setWin((v) => v === 'dash' ? null : 'dash')} title="대시보드: 통계·목표·여정 (V)">📊</button>
-          <button className="mini-btn" onClick={() => setMenuOpen((v) => !v)}>☰</button>
+          <button className={'mini-btn' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen((v) => !v)} title="메뉴 (인벤토리·제작·퀘스트 등)">☰</button>
         </div>
       </div>
 
@@ -156,8 +149,24 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
 
       {menuOpen && (
         <div className="menu-pop">
+          <div className="menu-grid">
+            {[
+              { id: 'inv', icon: '🎒', name: '인벤토리' },
+              { id: 'craft', icon: '⚒️', name: '제작' },
+              { id: 'quest', icon: '📜', name: '퀘스트' },
+              { id: 'hunt', icon: '⚔️', name: '사냥' },
+              { id: 'war', icon: '🏰', name: '군사' },
+              { id: 'dex', icon: '📖', name: '도감' },
+              { id: 'dash', icon: '📊', name: '대시보드' },
+              { id: 'slots', icon: '🗂️', name: '세이브' },
+            ].map((b) => (
+              <button key={b.id} className={'menu-item' + (win === b.id ? ' on' : '')}
+                onClick={() => { setWin((v) => (v === b.id ? null : b.id)); setMenuOpen(false); }}>
+                <span className="menu-ic">{b.icon}</span><span className="menu-lb">{b.name}</span>
+              </button>
+            ))}
+          </div>
           <button className="mini-btn wide" onClick={() => { onSave(); setMenuOpen(false); }}>💾 빠른 저장</button>
-          <button className="mini-btn wide" onClick={() => { setWin('slots'); setMenuOpen(false); }}>🗂️ 세이브 슬롯</button>
         </div>
       )}
 

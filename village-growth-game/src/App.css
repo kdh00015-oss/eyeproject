@@ -37,9 +37,18 @@
 .mini-btn.wide { width: 100%; text-align: left; margin-bottom: 4px; }
 .menu-pop {
   position: absolute; top: 48px; right: 10px; z-index: 20;
-  background: rgba(20, 26, 38, 0.95); border: 1px solid var(--border);
-  border-radius: 10px; padding: 8px; width: 160px;
+  background: rgba(20, 26, 38, 0.96); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px; width: 232px; max-width: calc(100vw - 20px);
 }
+.menu-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 6px; }
+.menu-item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #eaf0f8;
+  border-radius: 8px; padding: 7px 2px; cursor: pointer;
+}
+.menu-item.on { border-color: var(--accent); color: var(--accent); }
+.menu-ic { font-size: 18px; line-height: 1; }
+.menu-lb { font-size: 10px; }
 
 /* 접이식 드로어 */
 .drawer-tab {
@@ -79,7 +88,11 @@
 .slot.small { width: 40px; height: 40px; font-size: 18px; }
 .slot.on { border-color: var(--accent-2); box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.4); }
 .slot-key { position: absolute; top: 2px; left: 4px; font-size: 9px; color: var(--text-dim); }
-.seed-strip, .build-strip { display: flex; gap: 4px; background: rgba(20, 26, 38, 0.7); padding: 4px; border-radius: 10px; }
+.seed-strip, .build-strip {
+  display: flex; gap: 4px; background: rgba(20, 26, 38, 0.7); padding: 4px; border-radius: 10px;
+  flex-wrap: nowrap; overflow-x: auto; max-width: 88vw; scrollbar-width: thin;
+}
+.seed-strip .seed, .build-strip .slot { flex: 0 0 auto; }
 .seed {
   width: 34px; height: 34px; font-size: 18px;
   background: rgba(40, 50, 70, 0.8); border: 1px solid var(--border); border-radius: 8px;
@@ -703,6 +716,21 @@
   .topbar { flex-direction: column; align-items: stretch; }
   .topbar-stats { justify-content: center; }
   .topbar-controls { justify-content: center; }
+}
+
+/* 모바일 HUD: 칩·버튼 축소 + 화면 밖으로 넘치지 않게 */
+@media (max-width: 640px) {
+  .hud-tl { max-width: 50%; gap: 4px; }
+  .hud-tr { max-width: 66%; gap: 4px; }
+  .hud-chip { font-size: 10px; padding: 3px 7px; }
+  .mini-btn { font-size: 12px; padding: 3px 6px; }
+  .hud-btns { gap: 3px; margin-left: 2px; flex-wrap: wrap; justify-content: flex-end; }
+  .slot { width: 44px; height: 44px; font-size: 20px; }
+  .slot.small { width: 36px; height: 36px; font-size: 16px; }
+  .hotbar { bottom: 8px; gap: 5px; }
+  .action-btn { width: 58px; height: 58px; bottom: 84px; right: 16px; }
+  .run-btn { width: 44px; height: 44px; bottom: 150px; right: 22px; }
+  .joystick { width: 96px; height: 96px; bottom: 76px; left: 12px; }
 }
 @media (max-width: 480px) {
   .stat-grid { grid-template-columns: 1fr 1fr; }
