@@ -25,15 +25,15 @@
 
 body {
   margin: 0;
-  background: radial-gradient(1200px 600px at 50% -10%, #2b3a55, transparent),
-    var(--bg);
+  background: var(--bg);
   min-height: 100svh;
+  overflow: hidden;
 }
 
 #root {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 16px;
+  width: 100vw;
+  height: 100svh;
+  overflow: hidden;
 }
 
 button {
