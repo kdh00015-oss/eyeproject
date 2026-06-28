@@ -42,7 +42,6 @@ import {
   FARM_PLOTS_MAX,
   RECLAIM_BASE_COST,
   EXPLORE_BASE_COST,
-  BASE_FISH_PER_DAY,
   VILLAGE_TEMPLATES,
   MAX_LOG,
 } from './constants';
@@ -125,10 +124,7 @@ export function gameReducer(state, action) {
       if (spot.requires && state.buildings[spot.requires.building] < spot.requires.level) {
         return { ...state, log: log(state, '아직 갈 수 없는 낚시터입니다. (항구 필요)', 'warn') };
       }
-      const maxFish = BASE_FISH_PER_DAY + state.research.fishing;
-      if (state.fishUsed >= maxFish) {
-        return { ...state, log: log(state, '오늘은 더 이상 낚시할 수 없습니다.', 'warn') };
-      }
+      // 일간 낚시 제한 없음 — 자유롭게 채집
       // 어업연구가 높을수록 희귀 물고기 가중치 상승
       const fishingLvl = state.research.fishing;
       const table = spot.fish.map((f) => ({
@@ -141,7 +137,6 @@ export function gameReducer(state, action) {
       if (Math.random() > weather.fish) {
         return {
           ...state,
-          fishUsed: state.fishUsed + 1,
           log: log(state, `🎣 ${spot.name}에서 허탕을 쳤습니다...`, 'info'),
         };
       }
@@ -150,7 +145,6 @@ export function gameReducer(state, action) {
       return {
         ...state,
         inventory,
-        fishUsed: state.fishUsed + 1,
         stats: { ...state.stats, fished: state.stats.fished + 1 },
         log: log(
           state,

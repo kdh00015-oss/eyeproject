@@ -212,9 +212,15 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
       {/* 진행 로그 토스트 */}
       {toast && <div className={'game-toast log-' + toast.kind}>{toast.text}</div>}
 
-      {/* 모바일 조이스틱 + 액션 */}
+      {/* 모바일 조이스틱 + 액션 + 달리기 */}
       <Joystick joy={w.joy} />
       <button className="action-btn" onClick={w.interactFront} aria-label="행동">✋</button>
+      <button
+        className={'run-btn' + (w.run ? ' on' : '')}
+        onClick={() => w.setRun((v) => !v)}
+        title="빠른 달리기 (PC: Shift)"
+        aria-label="달리기"
+      >🏃</button>
 
       {/* 건물 진입 모달 */}
       {w.activeBuilding && ActivePanel && (
