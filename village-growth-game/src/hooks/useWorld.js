@@ -7,6 +7,7 @@ import {
 } from '../game/world/draw';
 import { paletteFor, ambientOverlay, isNight, clockString } from '../game/world/palette';
 import { CROPS } from '../game/crops';
+import { cbonus } from '../game/classes';
 import { ANIMAL_LIST } from '../game/livestock';
 import { JOBS, JOB_SITE } from '../game/workers';
 
@@ -194,6 +195,29 @@ export function useWorld({ state, time, actions }) {
     if (placeRef.current) { interact(fx, fy); return; }
     const cands = [[fx, fy]];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cands.push([cx + dx, cy + dy]);
+
+    // 0) 씨앗 도구: 주변에서 '다 자란 작물'을 우선 수확 → 없으면 빈 칸에 파종
+    if (toolRef.current === 'seeds' && M.FARM) {
+      const farm = stateRef.current.farm;
+      const day = stateRef.current.day;
+      const grow = cbonus(stateRef.current).cropGrow;
+      let bestReady = -1, brd = 99, bestEmpty = -1, bed = 99;
+      for (const [tx, ty] of cands) {
+        const idx = M.plotIndexAt(tx, ty);
+        if (idx < 0 || idx >= farm.length) continue; // 농장 밖/잠긴 칸 제외
+        const d = Math.hypot(tx + 0.5 - p.x, ty + 0.5 - p.y);
+        const plot = farm[idx];
+        if (plot) {
+          const crop = CROPS[plot.cropId];
+          const need = Math.max(1, Math.ceil(crop.growthDays * grow));
+          if (day - plot.plantedDay >= need && d < brd) { brd = d; bestReady = idx; }
+        } else if (d < bed) { bed = d; bestEmpty = idx; }
+      }
+      if (bestReady >= 0) { actions.harvest(bestReady); cooldown.current = 0.25; return; }
+      if (bestEmpty >= 0) { actions.plant(bestEmpty, cropRef.current); cooldown.current = 0.25; return; }
+      // 주변에 농장 칸이 없으면 아래 일반 처리로 넘어감
+    }
+
     // 1) 인접한 건물 문 → 진입 (걸을 때 자동 진입 X, 행동키로만)
     for (const [tx, ty] of cands) {
       const b = M.buildingHitAt(tx, ty);
