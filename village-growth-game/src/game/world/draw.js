@@ -262,6 +262,23 @@ export function drawPlaceable(ctx, type, px, py, size, night) {
     ctx.fillStyle = '#3e8e41'; blk(ctx, '#3e8e41', 3.4, 4, 1.2, 1.4, px, py, u);
     ctx.fillStyle = '#ff6fae'; blk(ctx, '#ff6fae', 2.9, 2.8, 1.3, 1.3, px, py, u);
     ctx.fillStyle = '#ffd24a'; blk(ctx, '#ffd24a', 4.2, 3.2, 1.1, 1.1, px, py, u);
+  } else {
+    // 그 외 건물(창고/학교/병원/경비탑/통발/양식장 등): 본체 + 아이콘 라벨
+    const STY = {
+      warehouse: { wall: '#b08a55', roof: '#7a6a52', ic: '🏚️' },
+      school: { wall: '#d9c27a', roof: '#7b9bd0', ic: '🏫' },
+      hospital: { wall: '#e7e7ee', roof: '#d05a5a', ic: '🏥' },
+      watchtower: { wall: '#9aa0a6', roof: '#6a4a32', ic: '🗼' },
+      fishtrap: { wall: '#8a6a44', roof: '#5a8aa0', ic: '🦐' },
+      fishfarm: { wall: '#6fa0b8', roof: '#3f7a92', ic: '🐟' },
+    };
+    const s = STY[type] || { wall: '#b89a6a', roof: '#7a5a3a', ic: '🏛️' };
+    ctx.fillStyle = s.wall; ctx.fillRect(px + 2, py + size * 0.42, size - 4, size * 0.58);
+    ctx.fillStyle = s.roof;
+    ctx.beginPath(); ctx.moveTo(px - 1, py + size * 0.46); ctx.lineTo(px + size / 2, py + 2); ctx.lineTo(px + size + 1, py + size * 0.46); ctx.closePath(); ctx.fill();
+    ctx.font = `${Math.round(size * 0.4)}px sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText(s.ic, px + size / 2, py + size * 0.86);
+    ctx.textAlign = 'left';
   }
 }
 
