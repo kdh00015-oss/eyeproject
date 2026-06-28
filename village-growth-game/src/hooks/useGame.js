@@ -54,7 +54,7 @@ export function useGame() {
       build: (buildingId) => dispatch({ type: 'BUILD', buildingId }),
       chop: (key) => dispatch({ type: 'CHOP', key }),
       mine: (key) => dispatch({ type: 'MINE', key }),
-      place: (ptype, x, y, cost) => dispatch({ type: 'PLACE', ptype, x, y, cost }),
+      place: (ptype, x, y, cost, map) => dispatch({ type: 'PLACE', ptype, x, y, cost, map }),
       research: (field) => dispatch({ type: 'RESEARCH', field }),
       explore: () => dispatch({ type: 'EXPLORE' }),
       openTrade: (villageId) => dispatch({ type: 'OPEN_TRADE', villageId }),

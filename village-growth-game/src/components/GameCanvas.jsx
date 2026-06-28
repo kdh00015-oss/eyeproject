@@ -68,6 +68,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave }) {
         <span className="hud-chip">🪵 {fmt(state.wood)}</span>
         <span className="hud-chip">🪨 {fmt(state.stone)}</span>
         <span className="hud-chip">👥 {Math.floor(state.population)}/{derived.maxPop}</span>
+        <span className="hud-chip">{w.mapId === 'village' ? '🏡' : '🌲'} {w.mapName}</span>
       </div>
 
       {/* 상단 우: 시간/계절/날씨/직위 + 컨트롤 */}
