@@ -57,6 +57,7 @@ export function useGame() {
       openTrade: (villageId) => dispatch({ type: 'OPEN_TRADE', villageId }),
       hire: (job) => dispatch({ type: 'HIRE', job }),
       fireWorker: (id) => dispatch({ type: 'FIRE_WORKER', id }),
+      trainWorker: (id) => dispatch({ type: 'TRAIN_WORKER', id }),
       recruitGeneral: () => dispatch({ type: 'RECRUIT_GENERAL' }),
       dismissGeneral: (id) => dispatch({ type: 'DISMISS_GENERAL', id }),
       recruitTroop: (troop, qty) => dispatch({ type: 'RECRUIT_TROOP', troop, qty }),

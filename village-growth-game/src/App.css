@@ -905,3 +905,22 @@
 .journey-req { display: flex; flex-wrap: wrap; gap: 5px; margin-left: auto; }
 .journey-req .req { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: rgba(224,96,74,0.2); }
 .journey-req .req.ok { background: rgba(109,211,109,0.22); }
+
+/* 일꾼 카드 버튼 행 */
+.worker-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.worker-btns .btn-sm { flex: 1 1 auto; }
+
+/* HUD 칩 탭(상세) */
+.hud-chip.tappable { cursor: pointer; }
+.hud-chip.tappable:active { transform: scale(0.96); }
+.info-pop-backdrop {
+  position: fixed; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center;
+  background: rgba(8,12,20,0.72); padding: 20px;
+}
+.info-pop {
+  width: min(360px, 94vw); background: var(--bg-soft, #1b2230); color: #eaf0f8;
+  border: 1px solid var(--border, #2f5468); border-radius: 14px; padding: 18px 18px 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+.info-pop-title { margin: 0 0 8px; font-size: 18px; }
+.info-pop-body { margin: 0 0 14px; font-size: 13.5px; line-height: 1.6; opacity: 0.92; }
