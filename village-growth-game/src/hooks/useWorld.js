@@ -10,7 +10,7 @@ import { CROPS } from '../game/crops';
 import { ANIMAL_LIST } from '../game/livestock';
 import { JOBS, JOB_SITE } from '../game/workers';
 
-const DAY_REAL_SEC = 240; // 하루를 더 느리게 (체감 시간 ↑)
+const DAY_REAL_SEC = 420; // 하루 길이(초) — 더 천천히 흐르게
 const SPEED = { pause: 0, x1: 1, x2: 2.5 };
 const PLAYER_SPEED = 4.4;
 const RADIUS = 0.32;
