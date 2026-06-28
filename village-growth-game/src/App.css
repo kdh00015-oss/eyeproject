@@ -169,6 +169,40 @@
 .inv-detail-meta { font-size: 12px; color: var(--text-dim); }
 .inv-detail-desc { font-size: 13px; color: var(--text-dim); margin: 0 0 10px; line-height: 1.5; }
 
+/* 장비 슬롯 */
+.gear-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+.gear-stats { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.gear-slots { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+@media (max-width: 560px) { .gear-slots { grid-template-columns: repeat(4, 1fr); } }
+.gear-slot { position: relative; aspect-ratio: 1/1; background: var(--bg); border: 2px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.gear-slot.sel { box-shadow: 0 0 0 2px var(--accent-2); }
+.gear-icon { font-size: 22px; }
+.gear-empty { font-size: 16px; opacity: 0.4; }
+.gear-enh { position: absolute; top: 0; right: 2px; font-size: 10px; color: var(--accent-2); font-weight: 800; }
+.gear-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* 사냥 / 전투 */
+.hunt-stats { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.zone-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.zone-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+.zone-card.locked { opacity: 0.5; }
+.zone-head { display: flex; justify-content: space-between; align-items: center; }
+.zone-name { font-weight: 700; }
+.zone-mons { font-size: 11px; color: var(--text-dim); margin: 4px 0 8px; }
+.zone-btns { display: flex; gap: 6px; }
+.battle { display: flex; align-items: center; justify-content: space-around; gap: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+.battler { text-align: center; flex: 1; }
+.bt-icon { font-size: 44px; }
+.bt-name { font-weight: 700; font-size: 13px; margin: 4px 0; }
+.bt-bar { height: 10px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+.bt-fill { height: 100%; transition: width 0.25s ease; }
+.bt-fill.mon { background: #e0604a; }
+.bt-fill.me { background: #6dd36d; }
+.bt-hp { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.vs { font-weight: 800; color: var(--text-dim); }
+.battle-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+.battle-log { list-style: none; margin: 0; padding: 8px; background: var(--bg); border-radius: 8px; max-height: 150px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+
 /* 제작 창 */
 .craft-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .craft-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }

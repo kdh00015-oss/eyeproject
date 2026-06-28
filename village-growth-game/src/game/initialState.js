@@ -77,7 +77,8 @@ export function createInitialState() {
     stats: { harvested: 0, fished: 0, built: 0, chopped: 0, mined: 0, crafted: 0 },
     dailyBase: { harvested: 0, fished: 0, built: 0, chopped: 0, mined: 0, crafted: 0 },
     claimed: [], // 보상 받은 퀘스트 id
-    equipped: [], // 장착한 장비 아이템 id
+    // 장비 슬롯 (각 슬롯: null 또는 { id, dur, enh })
+    gear: { weapon: null, armor: null, helmet: null, gloves: null, boots: null, necklace: null, ring: null, tool: null },
     // 마을 레벨 + 주민 만족도 세부지표
     villageLevel: 1,
     satisfaction: { food: 60, safety: 50, culture: 40, education: 30, hygiene: 45 },

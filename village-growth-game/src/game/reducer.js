@@ -17,6 +17,7 @@ import { PLACEABLES } from './world/worldgen';
 import { RECIPES, itemCount } from './crafting';
 import { QUESTS, questProgress } from './quests';
 import { itemDef } from './items';
+import { enhanceCost, enhanceChance, repairCost } from './combat';
 
 // 경험치 → 레벨 (다음 레벨까지 level*100 필요)
 function levelFromExp(exp) {
@@ -315,7 +316,7 @@ export function gameReducer(state, action) {
     // --- 월드: 도구 행동 ---
     case 'CHOP': {
       // 나무 벌목 → 나무 자원 (강화 도끼 장착 시 +2)
-      const bonus = state.equipped.includes('sturdyAxe') ? 2 : 0;
+      const bonus = state.gear.tool?.id === 'sturdyAxe' ? 2 : 0;
       const gain = 2 + Math.floor(Math.random() * 2) + bonus;
       return {
         ...state,
@@ -327,7 +328,7 @@ export function gameReducer(state, action) {
     }
     case 'MINE': {
       // 바위 채굴 → 돌 자원 (강화 곡괭이 장착 시 +2)
-      const bonus = state.equipped.includes('sturdyPick') ? 2 : 0;
+      const bonus = state.gear.tool?.id === 'sturdyPick' ? 2 : 0;
       const gain = 1 + Math.floor(Math.random() * 2) + bonus;
       return {
         ...state,
@@ -424,11 +425,61 @@ export function gameReducer(state, action) {
     }
     case 'EQUIP': {
       const def = itemDef(action.id);
-      if (def.category !== 'equipment') return state;
-      const has = state.equipped.includes(action.id);
-      if (!has && (state.inventory[action.id] || 0) <= 0) return state;
-      const equipped = has ? state.equipped.filter((x) => x !== action.id) : [...state.equipped, action.id];
-      return { ...state, equipped, log: log(state, `${def.icon} ${def.name} ${has ? '해제' : '장착'}.`, 'info') };
+      if (def.category !== 'equipment' || !def.slot) return state;
+      if ((state.inventory[action.id] || 0) <= 0) return state;
+      const slot = def.slot;
+      const inventory = { ...state.inventory };
+      const gear = { ...state.gear };
+      // 기존 장비는 가방으로
+      if (gear[slot]) inventory[gear[slot].id] = (inventory[gear[slot].id] || 0) + 1;
+      inventory[action.id] -= 1;
+      gear[slot] = { id: action.id, dur: def.maxDur || 0, enh: 0 };
+      return { ...state, inventory, gear, log: log(state, `${def.icon} ${def.name} 장착.`, 'good') };
+    }
+    case 'UNEQUIP': {
+      const inst = state.gear[action.slot];
+      if (!inst) return state;
+      const inventory = { ...state.inventory, [inst.id]: (state.inventory[inst.id] || 0) + 1 };
+      return { ...state, gear: { ...state.gear, [action.slot]: null }, inventory, log: log(state, `${itemDef(inst.id).name} 해제.`, 'info') };
+    }
+    case 'ENHANCE': {
+      const inst = state.gear[action.slot];
+      if (!inst) return state;
+      const cost = enhanceCost(inst.enh);
+      if (state.money < cost.gold || (state.inventory.crystal || 0) < cost.crystal) {
+        return { ...state, log: log(state, '강화 재료가 부족합니다. (골드/마력 수정)', 'warn') };
+      }
+      const inventory = { ...state.inventory, crystal: (state.inventory.crystal || 0) - cost.crystal };
+      const success = Math.random() < enhanceChance(inst.enh);
+      const gear = { ...state.gear, [action.slot]: { ...inst, enh: inst.enh + (success ? 1 : 0) } };
+      return {
+        ...state, money: state.money - cost.gold, inventory, gear,
+        log: log(state, success ? `🔨 강화 성공! +${inst.enh + 1}` : '🔨 강화 실패...', success ? 'good' : 'warn'),
+      };
+    }
+    case 'REPAIR': {
+      const inst = state.gear[action.slot];
+      if (!inst) return state;
+      const def = itemDef(inst.id);
+      const cost = repairCost(def, inst.dur);
+      if (state.money < cost) return { ...state, log: log(state, '수리비가 부족합니다.', 'warn') };
+      return { ...state, money: state.money - cost, gear: { ...state.gear, [action.slot]: { ...inst, dur: def.maxDur } }, log: log(state, `🔧 ${def.name} 수리 완료.`, 'good') };
+    }
+    case 'COMBAT_RESULT': {
+      const { drops, gold, exp, durLoss, label } = action;
+      const patch = { inventory: { ...state.inventory } };
+      grantItems(patch, state, drops);
+      const e = state.exp + (exp || 0);
+      const gear = { ...state.gear };
+      for (const sl of ['weapon', 'armor']) {
+        if (gear[sl] && gear[sl].dur > 0) gear[sl] = { ...gear[sl], dur: Math.max(0, gear[sl].dur - (durLoss || 0)) };
+      }
+      return {
+        ...state, ...patch, gear,
+        money: state.money + (gold || 0),
+        exp: e, level: levelFromExp(e),
+        log: log(state, `⚔️ ${label} 처치! 보상을 획득했습니다.`, 'good'),
+      };
     }
 
     // --- 퀘스트 보상 수령 ---
