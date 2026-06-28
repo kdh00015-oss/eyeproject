@@ -44,6 +44,7 @@ export function useGame() {
       buyAnimal: (animalId) => dispatch({ type: 'BUY_ANIMAL', animalId }),
       sellAnimal: (animalId) => dispatch({ type: 'SELL_ANIMAL', animalId }),
       sellGood: (goodId, qty) => dispatch({ type: 'SELL_GOOD', goodId, qty }),
+      buyGood: (goodId, qty) => dispatch({ type: 'BUY_GOOD', goodId, qty }),
       buyFeed: (qty) => dispatch({ type: 'BUY_FEED', qty }),
       build: (buildingId) => dispatch({ type: 'BUILD', buildingId }),
       chop: (key) => dispatch({ type: 'CHOP', key }),

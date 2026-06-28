@@ -1,7 +1,7 @@
 // 월드 런타임: 게임 루프 + 입력 + 카메라/줌 + 낮밤 + NPC + 도구 + 다중 맵(마을/들판) 이동
 
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { MAPS, WTILE, T, PLACEABLES } from '../game/world/worldgen';
+import { MAPS, MAP_META, WTILE, T, PLACEABLES } from '../game/world/worldgen';
 import {
   drawTile, drawWaterShimmer, drawObject, drawCrop, drawBuilding, drawPlaceable, drawLampGlow, drawPlayer, drawNPC,
 } from '../game/world/draw';
@@ -223,10 +223,15 @@ export function useWorld({ state, time, actions }) {
     const arr = [];
     if (mapIdRef.current === 'village') {
       state.workers.slice(0, 14).forEach((w, total) => {
-        const site = JOB_SITE[JOBS[w.job].site];
+        const job = JOBS[w.job];
+        const site = JOB_SITE[job.site];
         const ox = (total % 3) - 1, oy = Math.floor(total / 3) % 2;
         const cx = site.x + ox, cy = site.y + oy;
-        arr.push({ color: JOBS[w.job].color, x: cx + 0.5, y: cy + 0.5, wp: 0, wait: total * 0.3, path: [[cx, cy], [cx + 1, cy], [cx + 1, cy + 1], [cx, cy + 1]] });
+        arr.push({
+          color: job.color, icon: job.icon, name: w.name, resting: w.resting,
+          x: cx + 0.5, y: cy + 0.5, wp: 0, wait: total * 0.3,
+          path: [[cx, cy], [cx + 1, cy], [cx + 1, cy + 1], [cx, cy + 1]],
+        });
       });
     }
     workerNpcs.current = arr;
@@ -408,7 +413,19 @@ export function useWorld({ state, time, actions }) {
     }
     const nf = Math.floor(now / 220) % 2;
     for (const n of npcs.current) sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color, nf) });
-    for (const n of workerNpcs.current) sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color, nf) });
+    for (const n of workerNpcs.current) sprites.push({
+      y: n.y, fn: () => {
+        const sx = n.x * tileSize - camX, sy = n.y * tileSize - camY;
+        drawNPC(ctx, sx - tileSize / 2, sy - tileSize / 2, tileSize, n.color, nf);
+        // 머리 위 직업 아이콘 + 일하는 표시(작업 중엔 위아래로 까딱, 휴식 중엔 💤)
+        const working = !n.resting;
+        const swing = working ? Math.sin(now / 120 + n.x) * tileSize * 0.06 : 0;
+        ctx.font = `${Math.round(tileSize * 0.42)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(n.resting ? '💤' : n.icon, sx, sy - tileSize * 0.62 + swing);
+        ctx.textAlign = 'left';
+      },
+    });
     const p = player.current;
     sprites.push({ y: p.y, fn: () => drawPlayer(ctx, p.x * tileSize - camX - tileSize / 2, p.y * tileSize - camY - tileSize / 2, tileSize, p.facing, p.frame) });
 
@@ -497,7 +514,7 @@ export function useWorld({ state, time, actions }) {
     activeBuilding, setActiveBuilding,
     hud, showMap, setShowMap, miniRef,
     talkNpc, setTalkNpc, run, setRun,
-    mapId, mapName: mapId === 'village' ? '마을' : '들판',
+    mapId, mapName: (MAP_META[mapId] || {}).name || mapId, mapIcon: (MAP_META[mapId] || {}).icon || '🗺️',
     travelTo,
     joy: { joyStart, joyMove, joyEnd },
     interactFront,

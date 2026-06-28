@@ -125,6 +125,12 @@ export function sellPrice(state, goodId, derived) {
   return Math.max(1, Math.round(base * d.sellMult * classMult * demandFactor(state, goodId)));
 }
 
+// 시장 구매가: 현재 시세에 25% 상점 마진. 상인 직업은 구매가 할인(cbonus.buy)
+export function buyPrice(state, goodId) {
+  const cur = state.prices[goodId] ?? GOODS[goodId].basePrice;
+  return Math.max(1, Math.round(cur * 1.25 * cbonus(state).buy));
+}
+
 // 직위 승급 조건 충족 여부
 function meetsRank(metrics, req) {
   return Object.entries(req).every(([k, v]) => metrics[k] >= v);

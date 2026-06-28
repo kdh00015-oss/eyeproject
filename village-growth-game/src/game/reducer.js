@@ -6,7 +6,9 @@ import {
   computeDerived,
   seasonInfo,
   sellPrice,
+  buyPrice,
 } from './engine';
+import { GOODS } from './goods';
 import { CROPS } from './crops';
 import { FISHING_SPOTS } from './fishing';
 import { ANIMALS } from './livestock';
@@ -234,6 +236,27 @@ export function gameReducer(state, action) {
         skills: xp.skills,
         pricePressure,
         log: log(state, `💰 ${goodId} ${sellQty}개를 ${price * sellQty}골드에 판매.${xp.leveledUp ? ` (상업 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
+      };
+    }
+
+    case 'BUY_GOOD': {
+      const { goodId, qty } = action;
+      const want = Math.max(1, qty || 1);
+      const unit = buyPrice(state, goodId);
+      const canAfford = Math.floor(state.money / unit);
+      const buyQty = Math.min(want, canAfford);
+      if (buyQty <= 0) return { ...state, log: log(state, '골드가 부족해 구매할 수 없습니다.', 'warn') };
+      const inventory = { ...state.inventory, [goodId]: (state.inventory[goodId] || 0) + buyQty };
+      // 구매는 수요를 늘려 판매 압력을 일부 해소
+      const cur = (state.pricePressure && state.pricePressure[goodId]) || 0;
+      const pricePressure = { ...state.pricePressure };
+      if (cur) { const nv = Math.max(0, cur - buyQty * 0.5); if (nv < 0.5) delete pricePressure[goodId]; else pricePressure[goodId] = nv; }
+      return {
+        ...state,
+        inventory,
+        money: state.money - unit * buyQty,
+        pricePressure,
+        log: log(state, `🛒 ${GOODS[goodId]?.name || goodId} ${buyQty}개를 ${unit * buyQty}골드에 구매.`, 'good'),
       };
     }
 

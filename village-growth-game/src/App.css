@@ -783,3 +783,15 @@
   background: #2f5468; color: #cfeaf6; border-radius: 999px; padding: 4px 12px;
 }
 .world-badge.on { background: #caa53a; color: #2a2110; }
+
+/* ---- 시장 판매/구매 탭 ---- */
+.market-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.mk-tab {
+  flex: 1; padding: 7px 0; border-radius: 8px; cursor: pointer;
+  background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.12); color: inherit; font-weight: 700;
+}
+.mk-tab.on { background: #caa53a; color: #2a2110; border-color: #caa53a; }
+
+/* ---- NPC 대화 ---- */
+.npc-dialog { display: flex; flex-direction: column; gap: 10px; }
+.npc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
