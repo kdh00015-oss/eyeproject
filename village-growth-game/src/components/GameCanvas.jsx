@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useWorld } from '../hooks/useWorld';
 import { CROP_LIST } from '../game/crops';
 import { PLACEABLES } from '../game/world/worldgen';
-import { WEATHERS, RANKS } from '../game/constants';
+import { WEATHERS, RANKS, RECLAIM_BASE_COST, FARM_PLOTS_MAX } from '../game/constants';
 import { fmt } from '../game/util';
 import Modal from './world/Modal';
 import ResourcePanel from './ResourcePanel';
@@ -193,18 +193,28 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
             <span className="slot-icon">{t.icon}</span>
           </button>
         ))}
-        {w.tool === 'seeds' && !w.placeType && (
-          <div className="seed-strip">
-            {CROP_LIST.map((c) => (
+        {w.tool === 'seeds' && !w.placeType && (() => {
+          const canReclaim = state.farm.length < FARM_PLOTS_MAX;
+          const reclaimCost = RECLAIM_BASE_COST * (state.farm.length - 8);
+          return (
+            <div className="seed-strip">
+              {CROP_LIST.map((c) => (
+                <button
+                  key={c.id}
+                  className={'seed' + (w.selectedCrop === c.id ? ' on' : '')}
+                  onClick={() => w.setSelectedCrop(c.id)}
+                  title={`${c.name} 씨앗 ${c.seedCost}G`}
+                >{c.icon}</button>
+              ))}
               <button
-                key={c.id}
-                className={'seed' + (w.selectedCrop === c.id ? ' on' : '')}
-                onClick={() => w.setSelectedCrop(c.id)}
-                title={`${c.name} 씨앗 ${c.seedCost}G`}
-              >{c.icon}</button>
-            ))}
-          </div>
-        )}
+                className="seed reclaim"
+                disabled={!canReclaim || state.money < reclaimCost}
+                onClick={() => actions.reclaim()}
+                title={canReclaim ? `밭 개간 — ${reclaimCost}G (잠긴 🔒 칸을 늘립니다)` : '밭이 최대 크기입니다'}
+              >{canReclaim ? `🪓${reclaimCost}` : '🪓MAX'}</button>
+            </div>
+          );
+        })()}
         <div className="build-strip">
           {Object.values(PLACEABLES).map((p) => {
             const locked = state.villageLevel < (p.unlock || 1);

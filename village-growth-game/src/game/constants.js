@@ -111,8 +111,8 @@ export const VILLAGE_TEMPLATES = [
 // --- 핵심 수치 ---
 export const START_MONEY = 200;
 export const START_POP = 3;
-export const FARM_PLOTS_START = 9; // 시작 밭 칸 수
-export const FARM_PLOTS_MAX = 16; // 개간 최대
+export const FARM_PLOTS_START = 9; // 시작 밭 칸 수 (3×3)
+export const FARM_PLOTS_MAX = 12; // 개간 최대 (3×4)
 export const FOOD_PER_POP = 0.4; // 주민 1명당 하루 식량 소비
 export const TAX_PER_POP = 3; // 주민 1명당 세금 기준액
 export const DEFAULT_TAX = 10; // 기본 세율(%)

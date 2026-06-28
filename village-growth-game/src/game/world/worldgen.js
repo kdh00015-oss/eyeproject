@@ -92,7 +92,7 @@ function makeMap(raw) {
 // ---------------- 마을(village) ----------------
 function buildVillage() {
   const W = 44, H = 32;
-  const FARM = { x: 5, y: 20, cols: 4, rows: 4 };
+  const FARM = { x: 5, y: 20, cols: 3, rows: 4 }; // 3×4=12칸 (시작 9칸=3×3, 개간 시 4번째 줄)
   const rnd = mulberry32(1337);
   const inLake = (x, y) => ((x - 20.5) ** 2) / 110 + ((y - 4.5) ** 2) / 16 < 1;
   const t = [];

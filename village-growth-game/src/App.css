@@ -816,3 +816,14 @@
 .ach-text { display: flex; flex-direction: column; }
 .ach-text small { opacity: 0.7; font-size: 11px; }
 .ach-reward { font-size: 12px; font-weight: 700; color: #e7c54a; white-space: nowrap; }
+
+/* ---- 일꾼 생산량 표시 ---- */
+.prod-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 4px; }
+.prod-title { font-weight: 700; font-size: 13px; }
+.prod-chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: rgba(110,200,120,0.18); border: 1px solid rgba(110,200,120,0.4); }
+.worker-output { font-size: 12px; margin: 4px 0; opacity: 0.92; }
+.worker-output .rest-note { opacity: 0.65; }
+
+/* ---- 밭 개간 버튼(씨앗 핫바) ---- */
+.seed.reclaim { width: auto; padding: 0 8px; font-size: 12px; font-weight: 700; background: rgba(150,110,60,0.35); border-color: rgba(200,160,90,0.6); white-space: nowrap; }
+.seed.reclaim:disabled { opacity: 0.45; }
