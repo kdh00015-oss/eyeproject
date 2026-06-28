@@ -45,6 +45,11 @@ export const ANIMALS = {
     productDays: 3,
     productQty: 1,
   },
+  // --- 확장 가축 ---
+  duck: { id: 'duck', name: '오리', icon: '🦆', buyCost: 45, feedPerDay: 1, product: 'duckEgg', productDays: 1, productQty: 1 },
+  goat: { id: 'goat', name: '염소', icon: '🐐', buyCost: 100, feedPerDay: 2, product: 'goatMilk', productDays: 1, productQty: 1 },
+  rabbit: { id: 'rabbit', name: '토끼', icon: '🐰', buyCost: 50, feedPerDay: 1, product: 'fur', productDays: 2, productQty: 1 },
+  bee: { id: 'bee', name: '꿀벌', icon: '🐝', buyCost: 70, feedPerDay: 0, product: 'honey', productDays: 2, productQty: 1 },
 };
 
 export const ANIMAL_LIST = Object.values(ANIMALS);
@@ -55,6 +60,11 @@ export const ANIMAL_PRODUCTS = {
   truffle: { id: 'truffle', name: '송로버섯', icon: '🍄', basePrice: 50 },
   milk: { id: 'milk', name: '우유', icon: '🥛', basePrice: 18 },
   wool: { id: 'wool', name: '양털', icon: '🧶', basePrice: 45 },
+  // --- 확장 축산물 ---
+  duckEgg: { id: 'duckEgg', name: '오리알', icon: '🥚', basePrice: 7 },
+  goatMilk: { id: 'goatMilk', name: '염소젖', icon: '🥛', basePrice: 24 },
+  fur: { id: 'fur', name: '토끼털', icon: '🧶', basePrice: 30 },
+  honey: { id: 'honey', name: '꿀', icon: '🍯', basePrice: 35 },
 };
 
 // 사료 (시장에서 구매하는 소모품)

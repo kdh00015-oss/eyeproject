@@ -162,7 +162,8 @@ export function gameReducer(state, action) {
       }
       const inventory = { ...state.inventory };
       inventory[caught.id] = (inventory[caught.id] || 0) + 1;
-      const xp = addSkillXp(state, 'fishing', caught.rare ? 20 : 9);
+      const xp = addSkillXp(state, 'fishing', caught.legendary ? 60 : caught.rare ? 20 : 9);
+      const tag = caught.legendary ? ' ✨전설!' : caught.rare ? ' (희귀!)' : '';
       return {
         ...state,
         inventory,
@@ -170,7 +171,7 @@ export function gameReducer(state, action) {
         stats: { ...state.stats, fished: state.stats.fished + 1 },
         log: log(
           state,
-          `🐟 ${spot.name}에서 ${caught.name}${caught.rare ? ' (희귀!)' : ''}을(를) 낚았습니다.${xp.leveledUp ? ` (어업 Lv.${xp.leveledUp}!)` : ''}`,
+          `🐟 ${spot.name}에서 ${caught.name}${tag}을(를) 낚았습니다.${xp.leveledUp ? ` (어업 Lv.${xp.leveledUp}!)` : ''}`,
           caught.rare ? 'good' : 'info'
         ),
       };
@@ -224,11 +225,14 @@ export function gameReducer(state, action) {
       const price = sellPrice(state, goodId);
       const inventory = { ...state.inventory, [goodId]: have - sellQty };
       const xp = addSkillXp(state, 'trade', 4 + sellQty);
+      // 수요/공급: 많이 팔수록 판매 압력 누적 → 가격 하락
+      const pricePressure = { ...state.pricePressure, [goodId]: ((state.pricePressure && state.pricePressure[goodId]) || 0) + sellQty };
       return {
         ...state,
         inventory,
         money: state.money + price * sellQty,
         skills: xp.skills,
+        pricePressure,
         log: log(state, `💰 ${goodId} ${sellQty}개를 ${price * sellQty}골드에 판매.${xp.leveledUp ? ` (상업 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
       };
     }

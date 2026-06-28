@@ -33,7 +33,7 @@ for (const f of Object.values(FISH)) {
 }
 
 // 축산물: 식량 가치 차등 (양털은 식량 아님)
-const PRODUCT_FOOD = { egg: 0.5, milk: 0.8, truffle: 1, wool: 0 };
+const PRODUCT_FOOD = { egg: 0.5, milk: 0.8, truffle: 1, wool: 0, duckEgg: 0.6, goatMilk: 1, fur: 0, honey: 0.8 };
 for (const p of Object.values(ANIMAL_PRODUCTS)) {
   GOODS[p.id] = {
     id: p.id,

@@ -25,6 +25,7 @@ import {
 import { placedEffects } from './world/worldgen';
 import { armyUpkeep } from './military';
 import { cbonus } from './classes';
+import { rollEvent } from './events';
 import { clamp, weightedPick } from './util';
 
 // 생선류 재화 id (어부 판매 보너스 적용 대상)
@@ -109,13 +110,19 @@ export function computeDerived(state) {
 }
 
 // 현재 판매 단가 (시장 가격 변동 × 판매 보너스)
+// 판매 압력 → 수요 계수 (많이 팔린 재화는 일시적으로 가격이 눌림, 최대 -45%)
+export function demandFactor(state, goodId) {
+  const p = (state.pricePressure && state.pricePressure[goodId]) || 0;
+  return 1 - Math.min(0.45, p * 0.02);
+}
+
 export function sellPrice(state, goodId, derived) {
   const d = derived || computeDerived(state);
   const base = state.prices[goodId] ?? GOODS[goodId].basePrice;
   const cb = cbonus(state);
   // 상인: 모든 판매가 +6%, 어부: 생선 판매가 +10%
   const classMult = cb.sell * (FISH_GOODS.has(goodId) ? cb.fishSell : 1);
-  return Math.max(1, Math.round(base * d.sellMult * classMult));
+  return Math.max(1, Math.round(base * d.sellMult * classMult * demandFactor(state, goodId)));
 }
 
 // 직위 승급 조건 충족 여부
@@ -367,15 +374,32 @@ export function advanceDay(state) {
   }
   next.influence = state.influence + influenceGain;
 
-  // 8) 시장 가격 변동 (기본가의 0.6~1.5 사이에서 랜덤 워크)
+  // 8) 시장 가격 변동 (수요/공급·계절 반영 랜덤 워크)
   const prices = next.prices;
+  const pressure = { ...(state.pricePressure || {}) };
   for (const g of Object.values(GOODS)) {
     const base = g.basePrice;
     const cur = prices[g.id] ?? base;
     const drift = cur * (0.92 + Math.random() * 0.16); // ±8% 변동
-    const pulled = drift + (base - drift) * 0.1; // 기본가로 약하게 회귀
-    prices[g.id] = clamp(Math.round(pulled), Math.round(base * 0.6), Math.round(base * 1.5));
+    let pulled = drift + (base - drift) * 0.1; // 기본가로 약하게 회귀
+    // 계절: 제철이 아닌 작물은 공급이 줄어 가격 ↑ (겨울 작물 희소)
+    if (g.category === 'crop') {
+      const crop = CROPS[g.id];
+      const inSeason = crop && crop.seasons.includes(season.id);
+      pulled *= inSeason ? 0.95 : 1.12;
+    }
+    prices[g.id] = clamp(Math.round(pulled), Math.round(base * 0.55), Math.round(base * 1.6));
+    // 판매 압력은 매일 감쇠(수요 회복)
+    if (pressure[g.id]) {
+      pressure[g.id] = pressure[g.id] * 0.6;
+      if (pressure[g.id] < 0.5) delete pressure[g.id];
+    }
   }
+  next.pricePressure = pressure;
+
+  // 8.5) 랜덤 이벤트 (낮은 확률로 하루에 한 번)
+  const ev = rollEvent(next);
+  if (ev) { ev.apply(next); log = pushLog(log, day, ev.text, ev.kind); }
 
   // 9) 마을 레벨 + 직위 자동 승급
   const newDerived = computeDerived(next);

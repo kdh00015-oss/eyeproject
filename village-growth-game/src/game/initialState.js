@@ -47,6 +47,8 @@ export function createInitialState(classId) {
   // 시장 가격: 기본가에서 시작
   const prices = {};
   for (const g of Object.values(GOODS)) prices[g.id] = g.basePrice;
+  // 판매 압력(수요/공급): 많이 팔수록 누적 → 가격 하락, 시간이 지나면 회복
+  const pricePressure = {};
 
   const state = {
     // 시간
@@ -67,6 +69,7 @@ export function createInitialState(classId) {
     inventory,
     feed,
     prices,
+    pricePressure,
     // 도구로 모으는 자원
     wood: 10,
     stone: 4,

@@ -20,6 +20,16 @@ export const RECIPES = [
   { id: 'copperRing', out: { id: 'copperRing', qty: 1 }, inputs: [{ id: 'oreIron', qty: 2 }], station: 'forge', desc: '철광석 2 → 구리 반지' },
   // 요리
   { id: 'potion', out: { id: 'potion', qty: 1 }, inputs: [{ id: 'strawberry', qty: 2 }, { id: 'milk', qty: 1 }], station: 'cook', desc: '딸기 2 + 우유 1 → 치유 물약' },
+  // --- 가공 체인 (제분/제과/양조/요리 확장) ---
+  { id: 'flour', out: { id: 'flour', qty: 1 }, inputs: [{ id: 'wheat', qty: 2 }], station: 'mill', desc: '밀 2 → 밀가루 1' },
+  { id: 'cheese', out: { id: 'cheese', qty: 1 }, inputs: [{ id: 'goatMilk', qty: 2 }], station: 'cook', desc: '염소젖 2 → 치즈' },
+  { id: 'jam', out: { id: 'jam', qty: 1 }, inputs: [{ id: 'blueberry', qty: 2 }, { id: 'honey', qty: 1 }], station: 'cook', desc: '블루베리 2 + 꿀 1 → 잼' },
+  { id: 'salad', out: { id: 'salad', qty: 1 }, inputs: [{ id: 'cabbage', qty: 1 }, { id: 'tomato', qty: 1 }, { id: 'carrot', qty: 1 }], station: 'cook', desc: '양배추+토마토+당근 → 샐러드' },
+  { id: 'honeyTea', out: { id: 'honeyTea', qty: 1 }, inputs: [{ id: 'honey', qty: 1 }], station: 'cook', desc: '꿀 1 → 꿀차' },
+  { id: 'pumpkinPie', out: { id: 'pumpkinPie', qty: 1 }, inputs: [{ id: 'pumpkin', qty: 1 }, { id: 'flour', qty: 1 }, { id: 'duckEgg', qty: 1 }], station: 'bake', desc: '호박+밀가루+오리알 → 호박파이' },
+  { id: 'wine', out: { id: 'wine', qty: 1 }, inputs: [{ id: 'grape', qty: 3 }], station: 'brew', desc: '포도 3 → 와인' },
+  { id: 'sashimi', out: { id: 'sashimi', qty: 1 }, inputs: [{ id: 'tuna', qty: 1 }], station: 'cook', desc: '참치 1 → 회' },
+  { id: 'greatPotion', out: { id: 'greatPotion', qty: 1 }, inputs: [{ id: 'potion', qty: 1 }, { id: 'ginseng', qty: 1 }, { id: 'crystal', qty: 1 }], station: 'cook', desc: '치유물약+인삼+마력수정 → 상급 물약' },
 ];
 
 // 통합 보유량 조회 (wood/stone 은 자원 필드)
