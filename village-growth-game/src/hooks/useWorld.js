@@ -108,6 +108,15 @@ export function useWorld({ state, time, actions }) {
     cam.current.y = at.y * WTILE * zoomCur.current - size.current.h / 2;
   }, []);
 
+  // 전체 지도에서 클릭으로 지역 이동 (현재 맵의 출구 도착점 사용 → 없으면 시작점)
+  const travelTo = useCallback((targetId) => {
+    if (!MAPS[targetId] || targetId === mapIdRef.current) return;
+    const M = getMap();
+    const ex = M.EXITS.find((e) => e.to === targetId);
+    const at = ex ? ex.at : MAPS[targetId].PLAYER_START;
+    travel(targetId, at);
+  }, [travel]);
+
   // 상호작용 (대상 타일)
   const interact = useCallback((tx, ty) => {
     if (cooldown.current > 0) return;
@@ -489,6 +498,7 @@ export function useWorld({ state, time, actions }) {
     hud, showMap, setShowMap, miniRef,
     talkNpc, setTalkNpc, run, setRun,
     mapId, mapName: mapId === 'village' ? '마을' : '들판',
+    travelTo,
     joy: { joyStart, joyMove, joyEnd },
     interactFront,
   };

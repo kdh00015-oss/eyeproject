@@ -23,6 +23,7 @@ import HuntWindow from './windows/HuntWindow';
 import MilitaryWindow from './windows/MilitaryWindow';
 import SaveSlots from './windows/SaveSlots';
 import ClassSelect from './windows/ClassSelect';
+import WorldMap from './windows/WorldMap';
 
 const PANELS = {
   fishing: FishingPanel, livestock: LivestockPanel, build: BuildPanel,
@@ -42,6 +43,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
   const [menuOpen, setMenuOpen] = useState(false);
   const [win, setWin] = useState(null); // 'inv' | 'craft' | 'quest' | 'slots'
   const [classSkipped, setClassSkipped] = useState(false); // 이번 세션 직업선택 건너뜀
+  const [worldOpen, setWorldOpen] = useState(false); // 전체 지도 오버레이
   // 새 게임(1일차 + 직업 미선택)일 때만 직업 선택 표시 — 기존 세이브는 영향 없음
   const showClassSelect = !classSkipped && state.day === 1 && (state.class == null || state.class === 'none');
 
@@ -122,7 +124,8 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
           ))}
           <button className="mini-btn" onClick={() => w.setZoom((z) => Math.min(2.6, z + 0.2))}>➕</button>
           <button className="mini-btn" onClick={() => w.setZoom((z) => Math.max(0.8, z - 0.2))}>➖</button>
-          <button className={'mini-btn' + (w.showMap ? ' on' : '')} onClick={() => w.setShowMap((v) => !v)}>🗺️</button>
+          <button className={'mini-btn' + (w.showMap ? ' on' : '')} onClick={() => w.setShowMap((v) => !v)} title="현재 맵 미니맵 (M)">🗺️</button>
+          <button className={'mini-btn' + (worldOpen ? ' on' : '')} onClick={() => setWorldOpen((v) => !v)} title="전체 지도 · 빠른 이동">🌐</button>
           <button className={'mini-btn' + (win === 'inv' ? ' on' : '')} onClick={() => setWin((v) => v === 'inv' ? null : 'inv')}>🎒</button>
           <button className={'mini-btn' + (win === 'craft' ? ' on' : '')} onClick={() => setWin((v) => v === 'craft' ? null : 'craft')}>⚒️</button>
           <button className={'mini-btn' + (win === 'quest' ? ' on' : '')} onClick={() => setWin((v) => v === 'quest' ? null : 'quest')}>📜</button>
@@ -238,6 +241,11 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
         <Modal title={WINDOWS[win].title} icon={WINDOWS[win].icon} onClose={() => setWin(null)}>
           {WINDOWS[win].el}
         </Modal>
+      )}
+
+      {/* 전체 지도 (빠른 이동) */}
+      {worldOpen && (
+        <WorldMap current={w.mapId} onTravel={w.travelTo} onClose={() => setWorldOpen(false)} />
       )}
 
       {/* 시작 직업 선택 */}
