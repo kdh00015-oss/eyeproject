@@ -129,6 +129,9 @@ function buildVillage() {
     { id: 'port', name: '항구', panel: 'trade', x: 31, y: 7, w: 3, h: 2, door: { x: 32, y: 9 } },
     { id: 'barn', name: '축사', panel: 'livestock', x: 13, y: 22, w: 3, h: 2, door: { x: 14, y: 24 } },
     { id: 'lab', name: '연구소', panel: 'research', x: 34, y: 18, w: 2, h: 2, door: { x: 34, y: 20 } },
+    { id: 'tavern', name: '주점', panel: 'tavern', x: 16, y: 13, w: 3, h: 3, door: { x: 17, y: 16 } },
+    { id: 'armory', name: '무기상점', panel: 'armory', x: 30, y: 14, w: 2, h: 2, door: { x: 30, y: 16 } },
+    { id: 'forge', name: '대장간', panel: 'forge', x: 38, y: 14, w: 2, h: 2, door: { x: 38, y: 16 } },
   ];
   const BSOLID = new Set(); const DOOR = new Set();
   for (const b of buildings) { for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) BSOLID.add(`${b.x + dx},${b.y + dy}`); DOOR.add(`${b.door.x},${b.door.y}`); }

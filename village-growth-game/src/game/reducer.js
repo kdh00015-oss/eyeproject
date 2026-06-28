@@ -26,6 +26,7 @@ import {
 } from './military';
 import { skillLevel, skillBonus } from './skills';
 import { cbonus } from './classes';
+import { ARMORY_STOCK } from './shops';
 
 // 스킬 경험치 가산 → 갱신된 skills 객체 반환 (레벨업 시 로그용 정보 포함)
 function addSkillXp(state, skillId, amount) {
@@ -661,9 +662,18 @@ export function gameReducer(state, action) {
       return next;
     }
 
-    // --- 군사: 장수 / 군대 / 정복 ---
+    // --- 무기상점 ---
+    case 'BUY_ITEM': {
+      const entry = ARMORY_STOCK.find((e) => e.id === action.id);
+      if (!entry) return state;
+      if (state.money < entry.price) return { ...state, log: log(state, '골드가 부족합니다.', 'warn') };
+      const inventory = { ...state.inventory, [action.id]: (state.inventory[action.id] || 0) + 1 };
+      return { ...state, money: state.money - entry.price, inventory, log: log(state, `🛒 ${itemDef(action.id).name}을(를) 구입했습니다.`, 'good') };
+    }
+
+    // --- 군사: 장수(영웅) / 군대 / 정복 ---
     case 'RECRUIT_GENERAL': {
-      if (state.rankIndex < WAR_UNLOCK_RANK) return { ...state, log: log(state, '촌장 이상부터 장수를 등용할 수 있습니다.', 'warn') };
+      // 주점에서 영웅(장수)은 언제든 등용 가능 (전쟁/군대는 촌장부터)
       if (state.money < GENERAL_COST) return { ...state, log: log(state, `등용 비용(${GENERAL_COST}골드)이 부족합니다.`, 'warn') };
       const g = rollGeneral(state.nextGeneralId, state.generals.map((x) => x.name));
       return {

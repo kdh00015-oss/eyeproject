@@ -16,6 +16,9 @@ import ResearchPanel from './panels/ResearchPanel';
 import MarketPanel from './panels/MarketPanel';
 import TradePanel from './panels/TradePanel';
 import WorkersPanel from './panels/WorkersPanel';
+import TavernPanel from './panels/TavernPanel';
+import ArmoryPanel from './panels/ArmoryPanel';
+import ForgePanel from './panels/ForgePanel';
 import InventoryWindow from './windows/InventoryWindow';
 import CraftingWindow from './windows/CraftingWindow';
 import QuestWindow from './windows/QuestWindow';
@@ -31,6 +34,7 @@ import DashboardWindow from './windows/DashboardWindow';
 const PANELS = {
   fishing: FishingPanel, livestock: LivestockPanel, build: BuildPanel,
   research: ResearchPanel, market: MarketPanel, trade: TradePanel, workers: WorkersPanel,
+  tavern: TavernPanel, armory: ArmoryPanel, forge: ForgePanel,
 };
 const TOOLS = [
   { id: 'axe', icon: '🪓', name: '도끼' },

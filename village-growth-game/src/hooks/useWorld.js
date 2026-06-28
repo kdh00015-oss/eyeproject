@@ -559,7 +559,17 @@ export function useWorld({ state, time, actions }) {
       sprites.push({ y: pl.y + 0.95, fn: () => drawPlaceable(ctx, pl.type, pl.x * tileSize - camX, pl.y * tileSize - camY, tileSize, night) });
     }
     for (const b of M.BUILDINGS) {
-      sprites.push({ y: b.y + b.h, fn: () => drawBuilding(ctx, b, b.x * tileSize - camX, b.y * tileSize - camY, tileSize, night) });
+      sprites.push({ y: b.y + b.h, fn: () => {
+        drawBuilding(ctx, b, b.x * tileSize - camX, b.y * tileSize - camY, tileSize, night);
+        // 건물 이름표 (어떤 건물인지 식별)
+        const lcx = (b.x + b.w / 2) * tileSize - camX;
+        const lty = b.y * tileSize - camY - 3;
+        ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+        const lw = ctx.measureText(b.name).width + 10;
+        ctx.fillStyle = 'rgba(20,26,38,0.82)'; ctx.fillRect(lcx - lw / 2, lty - 15, lw, 15);
+        ctx.fillStyle = '#eaf0f8'; ctx.fillText(b.name, lcx, lty - 4);
+        ctx.textAlign = 'left';
+      } });
     }
     const nf = Math.floor(now / 220) % 2;
     for (const n of npcs.current) sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color, nf) });
