@@ -125,8 +125,10 @@ export function sellPrice(state, goodId, derived) {
   const cb = cbonus(state);
   // 상인: 모든 판매가 +6%, 어부: 생선 판매가 +10%
   const classMult = cb.sell * (FISH_GOODS.has(goodId) ? cb.fishSell : 1);
+  // 상업 생활 스킬: 판매가 보너스
+  const tradeSk = skillBonus((state.skills && state.skills.trade) || 0);
   // 시장 수수료(SELL_COMMISSION) 적용 → 수입 난이도 ↑
-  return Math.max(1, Math.round(base * d.sellMult * classMult * demandFactor(state, goodId) * SELL_COMMISSION));
+  return Math.max(1, Math.round(base * d.sellMult * classMult * demandFactor(state, goodId) * SELL_COMMISSION * tradeSk));
 }
 
 // 시장 구매가: 현재 시세에 25% 상점 마진. 상인 직업은 구매가 할인(cbonus.buy)

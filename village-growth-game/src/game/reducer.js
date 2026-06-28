@@ -24,7 +24,7 @@ import {
   WAR_UNLOCK_RANK, GENERAL_COST, TROOPS, TROOP_LIST,
   rollGeneral, armyPower, troopCount, villageDefense,
 } from './military';
-import { skillLevel } from './skills';
+import { skillLevel, skillBonus } from './skills';
 import { cbonus } from './classes';
 
 // 스킬 경험치 가산 → 갱신된 skills 객체 반환 (레벨업 시 로그용 정보 포함)
@@ -108,7 +108,7 @@ export function gameReducer(state, action) {
       // 수확량 = 기본 × 날씨 × 농업연구 × 농업스킬
       const weather = WEATHERS[state.weather];
       const agri = 1 + state.research.agriculture * 0.1;
-      const sk = 1 + (skillLevel((state.skills && state.skills.farming) || 0) - 1) * 0.005;
+      const sk = skillBonus((state.skills && state.skills.farming) || 0);
       const qty = Math.max(1, Math.round(crop.yield * weather.crop * agri * sk));
       const farm = state.farm.slice();
       farm[plotIndex] = null;
@@ -165,9 +165,12 @@ export function gameReducer(state, action) {
         };
       }
       const inventory = { ...state.inventory };
-      inventory[caught.id] = (inventory[caught.id] || 0) + 1;
+      // 어업 스킬: 레벨당 2% 확률로 한 번에 +1 더 낚음
+      const flv = skillLevel((state.skills && state.skills.fishing) || 0);
+      const count = 1 + (Math.random() < (flv - 1) * 0.02 ? 1 : 0);
+      inventory[caught.id] = (inventory[caught.id] || 0) + count;
       const xp = addSkillXp(state, 'fishing', caught.legendary ? 60 : caught.rare ? 20 : 9);
-      const tag = caught.legendary ? ' ✨전설!' : caught.rare ? ' (희귀!)' : '';
+      const tag = (caught.legendary ? ' ✨전설!' : caught.rare ? ' (희귀!)' : '') + (count > 1 ? ` ×${count}` : '');
       return {
         ...state,
         inventory,
@@ -392,7 +395,7 @@ export function gameReducer(state, action) {
       // 나무 벌목 → 나무 자원 (강화 도끼 장착 시 +2, 채집꾼 직업 +1)
       const cb = cbonus(state);
       const bonus = (state.gear.tool?.id === 'sturdyAxe' ? 2 : 0) + cb.chop;
-      const gain = 2 + Math.floor(Math.random() * 2) + bonus;
+      const gain = Math.round((2 + Math.floor(Math.random() * 2) + bonus) * skillBonus((state.skills && state.skills.foraging) || 0));
       const xp = addSkillXp(state, 'foraging', 7 + gain);
       return {
         ...state,
@@ -406,12 +409,13 @@ export function gameReducer(state, action) {
     case 'MINE': {
       // 바위 채굴 → 돌 자원 (강화 곡괭이 장착 시 +2, 채집꾼 직업 +1)
       const cb = cbonus(state);
+      const mineSk = skillBonus((state.skills && state.skills.mining) || 0);
       const bonus = (state.gear.tool?.id === 'sturdyPick' ? 2 : 0) + cb.mine;
-      const gain = 1 + Math.floor(Math.random() * 2) + bonus;
+      const gain = Math.round((1 + Math.floor(Math.random() * 2) + bonus) * mineSk);
       const xp = addSkillXp(state, 'mining', 7 + gain);
-      // 광물 채굴: 산은 광맥이 풍부. 철광석/마력수정이 확률로 나옴(제작 고리 연결)
+      // 광물 채굴: 산은 광맥이 풍부. 철광석/마력수정이 확률로 나옴(채광 스킬이 확률 ↑)
       const map = (action.key || '').split(':')[0];
-      const oreChance = map === 'mountain' ? 0.4 : 0.1;
+      const oreChance = (map === 'mountain' ? 0.4 : 0.1) * mineSk;
       const crystalChance = map === 'mountain' ? 0.07 : 0.015;
       const inventory = { ...state.inventory };
       const dex = { ...state.dex };
@@ -548,6 +552,10 @@ export function gameReducer(state, action) {
         else patch.inventory[i.id] = (patch.inventory[i.id] || 0) - i.qty;
       }
       grantItems(patch, state, [recipe.out]);
+      // 제작 스킬: 레벨당 1.5% 확률로 결과물 +1 (보너스 산출)
+      const craftLv = skillLevel((state.skills && state.skills.crafting) || 0);
+      const bonusCraft = Math.random() < (craftLv - 1) * 0.015;
+      if (bonusCraft) grantItems(patch, state, [{ id: recipe.out.id, qty: recipe.out.qty }]);
       const exp = state.exp + 5;
       const out = itemDef(recipe.out.id);
       const xp = addSkillXp(state, 'crafting', 12);
@@ -556,7 +564,7 @@ export function gameReducer(state, action) {
         exp, level: levelFromExp(exp),
         skills: xp.skills,
         stats: { ...state.stats, crafted: state.stats.crafted + 1 },
-        log: log(state, `⚒️ ${out.name}을(를) 제작했습니다.${xp.leveledUp ? ` (제작 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
+        log: log(state, `⚒️ ${out.name}을(를) 제작했습니다.${bonusCraft ? ' (+보너스!)' : ''}${xp.leveledUp ? ` (제작 Lv.${xp.leveledUp}!)` : ''}`, 'good'),
       };
     }
 
@@ -614,7 +622,9 @@ export function gameReducer(state, action) {
       const { drops, gold, exp, durLoss, label } = action;
       const patch = { inventory: { ...state.inventory } };
       grantItems(patch, state, drops);
-      const e = state.exp + (exp || 0);
+      // 전투 스킬: 보상(골드·경험치) 증가
+      const combatSk = skillBonus((state.skills && state.skills.combat) || 0);
+      const e = state.exp + Math.round((exp || 0) * combatSk);
       const gear = { ...state.gear };
       for (const sl of ['weapon', 'armor']) {
         if (gear[sl] && gear[sl].dur > 0) gear[sl] = { ...gear[sl], dur: Math.max(0, gear[sl].dur - (durLoss || 0)) };
@@ -622,7 +632,7 @@ export function gameReducer(state, action) {
       const xp = addSkillXp(state, 'combat', 14);
       return {
         ...state, ...patch, gear,
-        money: state.money + (gold || 0),
+        money: state.money + Math.round((gold || 0) * combatSk),
         exp: e, level: levelFromExp(e),
         skills: xp.skills,
         log: log(state, `⚔️ ${label} 처치! 보상을 획득했습니다.${xp.leveledUp ? ` (전투 Lv.${xp.leveledUp}!)` : ''}`, 'good'),

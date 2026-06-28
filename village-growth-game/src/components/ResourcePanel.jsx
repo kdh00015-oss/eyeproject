@@ -52,10 +52,10 @@ export default function ResourcePanel({ state, derived }) {
           const lv = skillLevel(xp);
           const pct = lv >= 100 ? 100 : Math.round(((xp % 120) / 120) * 100);
           return (
-            <li key={sk.id} className="skill-row" title={`${sk.name} Lv.${lv} · 보너스 +${Math.round((skillBonus(xp) - 1) * 100)}%`}>
+            <li key={sk.id} className="skill-row" title={`${sk.name} Lv.${lv} — ${sk.benefit} (현재 +${Math.round((skillBonus(xp) - 1) * 100)}%)`}>
               <span className="skill-name">{sk.icon} {sk.name}</span>
               <span className="skill-bar"><span className="skill-fill" style={{ width: `${pct}%` }} /></span>
-              <span className="skill-lv">Lv.{lv}</span>
+              <span className="skill-lv">Lv.{lv} <small className="skill-bonus">+{Math.round((skillBonus(xp) - 1) * 100)}%</small></span>
             </li>
           );
         })}
