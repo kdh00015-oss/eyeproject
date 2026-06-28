@@ -26,6 +26,7 @@ import { placedEffects } from './world/worldgen';
 import { armyUpkeep } from './military';
 import { cbonus } from './classes';
 import { rollEvent } from './events';
+import { newlyAchieved } from './collection';
 import { clamp, weightedPick } from './util';
 
 // 생선류 재화 id (어부 판매 보너스 적용 대상)
@@ -149,6 +150,7 @@ export function advanceDay(state) {
     livestock: {},
     prices: { ...state.prices },
     villages: state.villages,
+    dex: { ...(state.dex || {}) },
   };
   let log = state.log;
   const day = state.day + 1;
@@ -198,6 +200,7 @@ export function advanceDay(state) {
           const qty = Math.round(slot.count * animal.productQty * livestockBonus);
           next.inventory[animal.product] =
             (next.inventory[animal.product] || 0) + qty;
+          next.dex[animal.product] = true;
         }
       } else {
         feedShort = true; // 사료 부족 → 생산 정지
@@ -438,6 +441,18 @@ export function advanceDay(state) {
 
   // 10) 하루 행동 제한 초기화
   next.fishUsed = 0;
+
+  // 11) 업적 달성 체크 + 보상 지급 (한 번만)
+  const wins = newlyAchieved(next);
+  if (wins.length) {
+    next.achieved = [...(next.achieved || []), ...wins.map((a) => a.id)];
+    for (const a of wins) {
+      next.money += a.reward.gold || 0;
+      next.fame = (next.fame || 0) + (a.reward.fame || 0);
+      const bonus = (a.reward.gold ? ` +${a.reward.gold}G` : '') + (a.reward.fame ? ` +${a.reward.fame}⭐` : '');
+      log = pushLog(log, day, `🏆 업적 달성: ${a.icon} ${a.name}!${bonus}`, 'good');
+    }
+  }
 
   next.log = log;
   return next;

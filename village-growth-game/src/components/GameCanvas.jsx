@@ -25,6 +25,7 @@ import SaveSlots from './windows/SaveSlots';
 import ClassSelect from './windows/ClassSelect';
 import WorldMap from './windows/WorldMap';
 import NpcDialog from './windows/NpcDialog';
+import CollectionWindow from './windows/CollectionWindow';
 
 const PANELS = {
   fishing: FishingPanel, livestock: LivestockPanel, build: BuildPanel,
@@ -57,6 +58,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
       else if (k === 'q') setWin((v) => (v === 'quest' ? null : 'quest'));
       else if (k === 'h') setWin((v) => (v === 'hunt' ? null : 'hunt'));
       else if (k === 'g') setWin((v) => (v === 'war' ? null : 'war'));
+      else if (k === 'b') setWin((v) => (v === 'dex' ? null : 'dex'));
       else if (k === 'escape') setWin(null);
     };
     window.addEventListener('keydown', onKey);
@@ -69,6 +71,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
     quest: { title: '퀘스트', icon: '📜', el: <QuestWindow state={state} derived={derived} actions={actions} /> },
     hunt: { title: '사냥', icon: '⚔️', el: <HuntWindow state={state} actions={actions} /> },
     war: { title: '군사·전쟁', icon: '🏰', el: <MilitaryWindow state={state} actions={actions} /> },
+    dex: { title: '도감·업적', icon: '📖', el: <CollectionWindow state={state} /> },
     slots: { title: '세이브 슬롯', icon: '💾', el: <SaveSlots current={slot} slotTick={slotTick} onSave={saveToSlot} onLoad={loadFromSlot} onNew={(i, cls) => { newGameInSlot(i, cls); setClassSkipped(false); }} /> },
   };
 
@@ -132,6 +135,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
           <button className={'mini-btn' + (win === 'quest' ? ' on' : '')} onClick={() => setWin((v) => v === 'quest' ? null : 'quest')}>📜</button>
           <button className={'mini-btn' + (win === 'hunt' ? ' on' : '')} onClick={() => setWin((v) => v === 'hunt' ? null : 'hunt')}>⚔️</button>
           <button className={'mini-btn' + (win === 'war' ? ' on' : '')} onClick={() => setWin((v) => v === 'war' ? null : 'war')}>🏰</button>
+          <button className={'mini-btn' + (win === 'dex' ? ' on' : '')} onClick={() => setWin((v) => v === 'dex' ? null : 'dex')} title="도감·업적 (B)">📖</button>
           <button className="mini-btn" onClick={() => setMenuOpen((v) => !v)}>☰</button>
         </div>
       </div>

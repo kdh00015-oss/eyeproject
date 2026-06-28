@@ -99,6 +99,9 @@ export function createInitialState(classId) {
     skills: emptySkills(),
     // 시작 직업 (applyClass에서 설정)
     class: 'none',
+    // 도감(발견한 재화) + 달성한 업적
+    dex: {},
+    achieved: [],
     // 하루 행동 제한
     fishUsed: 0,
     // 날씨 (advanceDay 첫 호출 전 기본값)
