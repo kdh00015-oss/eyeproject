@@ -117,6 +117,25 @@
   .joystick { opacity: 0.5; }
 }
 
+/* 미니맵 */
+.minimap-wrap {
+  position: absolute; top: 88px; right: 10px; z-index: 18;
+  background: rgba(20, 26, 38, 0.9); border: 1px solid var(--border);
+  border-radius: 10px; padding: 6px;
+}
+.minimap {
+  display: block; width: 220px; height: 160px;
+  image-rendering: pixelated; border-radius: 6px;
+}
+.minimap-close {
+  position: absolute; top: -8px; right: -8px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--panel); color: var(--text); border: 1px solid var(--border); font-size: 11px;
+}
+@media (max-width: 560px) {
+  .minimap { width: 150px; height: 109px; }
+}
+
 /* 진행 로그 토스트 */
 .game-toast {
   position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);

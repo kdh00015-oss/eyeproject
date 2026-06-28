@@ -1,11 +1,7 @@
-// 월드 런타임: requestAnimationFrame 게임 루프 + 입력 + 카메라/줌 + 낮밤 + NPC + 도구
-//  시뮬레이션 상태(state)는 React reducer가 관리하고, 여기서는 실시간 표현/이동을 담당한다.
+// 월드 런타임: 게임 루프 + 입력 + 카메라/줌 + 낮밤 + NPC + 도구 + 다중 맵(마을/들판) 이동
 
 import { useRef, useState, useEffect, useCallback } from 'react';
-import {
-  WTILE, WORLD_W, WORLD_H, TERRAIN, T, OBJECTS, BUILDINGS, NPCS, PLAYER_START,
-  FARM, terrainAt, objectAt, doorAt, buildingHitAt, isWalkable, plotIndexAt, PLACEABLES,
-} from '../game/world/worldgen';
+import { MAPS, WTILE, T, PLACEABLES } from '../game/world/worldgen';
 import {
   drawTile, drawWaterShimmer, drawObject, drawCrop, drawBuilding, drawPlaceable, drawLampGlow, drawPlayer, drawNPC,
 } from '../game/world/draw';
@@ -13,43 +9,44 @@ import { paletteFor, ambientOverlay, isNight, clockString } from '../game/world/
 import { CROPS } from '../game/crops';
 import { JOBS, JOB_SITE } from '../game/workers';
 
-const DAY_REAL_SEC = 100; // 실제 100초 = 게임 하루
+const DAY_REAL_SEC = 100;
 const SPEED = { pause: 0, x1: 1, x2: 2.5 };
-const PLAYER_SPEED = 4.6; // 타일/초
+const PLAYER_SPEED = 4.6;
 const RADIUS = 0.32;
 
 export function useWorld({ state, time, actions }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
+  const stateRef = useRef(state); stateRef.current = state;
+  const seasonRef = useRef(time.season.id); seasonRef.current = time.season.id;
 
-  // 시뮬 상태 최신본 참조
-  const stateRef = useRef(state);
-  stateRef.current = state;
-  const seasonRef = useRef(time.season.id);
-  seasonRef.current = time.season.id;
+  const [mapId, setMapId] = useState('village');
+  const mapIdRef = useRef('village');
+  const getMap = () => MAPS[mapIdRef.current];
 
-  // 월드 런타임 (ref: 매 프레임 갱신, 리렌더 X)
-  const player = useRef({ x: PLAYER_START.x + 0.5, y: PLAYER_START.y + 0.5, facing: 'down', frame: 0, moveT: 0 });
+  const player = useRef({ x: MAPS.village.PLAYER_START.x + 0.5, y: MAPS.village.PLAYER_START.y + 0.5, facing: 'down', frame: 0, moveT: 0 });
   const cam = useRef({ x: 0, y: 0 });
-  const npcs = useRef(NPCS.map((n) => ({ ...n, x: n.path[0][0] + 0.5, y: n.path[0][1] + 0.5, wp: 0, wait: 0 })));
+  const npcs = useRef(MAPS.village.NPCS.map((n) => ({ ...n, x: n.path[0][0] + 0.5, y: n.path[0][1] + 0.5, wp: 0, wait: 0 })));
   const workerNpcs = useRef([]);
-  const clock = useRef(0.32); // 0~1 하루 진행 (아침 시작)
+  const clock = useRef(0.32);
   const keys = useRef(new Set());
   const cooldown = useRef(0);
+  const travelCd = useRef(0);
   const size = useRef({ w: 800, h: 500, dpr: 1 });
   const joy = useRef({ active: false, dx: 0, dy: 0 });
-  const zoomCur = useRef(1.4); // 부드러운 줌(현재값)
-  const terrainCache = useRef(null); // 오프스크린 지형 캐시
-  const cacheSeason = useRef(null);
+  const zoomCur = useRef(1.4);
+  const terrainCache = useRef(null);
+  const cacheKey = useRef(null);
 
-  // UI 표시 상태 (저빈도 동기화)
-  const [tool, setTool] = useState('axe'); // axe|pickaxe|rod|seeds
+  const [tool, setTool] = useState('axe');
   const [selectedCrop, setSelectedCrop] = useState('wheat');
   const [placeType, setPlaceType] = useState(null);
   const [zoom, setZoom] = useState(1.4);
   const [speedId, setSpeedId] = useState('x1');
   const [activeBuilding, setActiveBuilding] = useState(null);
   const [hud, setHud] = useState({ clock: '08:00', night: false });
+  const [showMap, setShowMap] = useState(false);
+  const miniRef = useRef(null);
 
   const toolRef = useRef(tool); toolRef.current = tool;
   const cropRef = useRef(selectedCrop); cropRef.current = selectedCrop;
@@ -57,79 +54,114 @@ export function useWorld({ state, time, actions }) {
   const zoomRef = useRef(zoom); zoomRef.current = zoom;
   const speedRef = useRef(speedId); speedRef.current = speedId;
   const modalRef = useRef(activeBuilding); modalRef.current = activeBuilding;
+  const showMapRef = useRef(showMap); showMapRef.current = showMap;
 
-  const removedSet = useCallback(() => new Set(stateRef.current.removed.map((r) => r.key)), []);
-  const placedSolid = useCallback(() => {
+  // 현재 맵의 벌목/채굴 제거 집합 (맵별 네임스페이스)
+  const removedSet = useCallback(() => {
+    const m = mapIdRef.current;
     const s = new Set();
-    for (const p of stateRef.current.placed) if (PLACEABLES[p.type]?.solid) s.add(`${p.x},${p.y}`);
+    for (const r of stateRef.current.removed) {
+      const i = r.key.indexOf(':');
+      if (i >= 0) { if (r.key.slice(0, i) === m) s.add(r.key.slice(i + 1)); }
+      else if (m === 'village') s.add(r.key);
+    }
     return s;
+  }, []);
+  const placedSolid = useCallback(() => {
+    const m = mapIdRef.current;
+    const s = new Set();
+    for (const p of stateRef.current.placed) {
+      if ((p.map || 'village') === m && PLACEABLES[p.type]?.solid) s.add(`${p.x},${p.y}`);
+    }
+    return s;
+  }, []);
+
+  // 맵 이동
+  const travel = useCallback((to, at) => {
+    mapIdRef.current = to;
+    setMapId(to);
+    player.current.x = at.x + 0.5;
+    player.current.y = at.y + 0.5;
+    npcs.current = MAPS[to].NPCS.map((n) => ({ ...n, x: n.path[0][0] + 0.5, y: n.path[0][1] + 0.5, wp: 0, wait: 0 }));
+    cacheKey.current = null; // 지형 캐시 재생성
+    travelCd.current = 0.6;
+    cam.current.x = at.x * WTILE * zoomCur.current - size.current.w / 2;
+    cam.current.y = at.y * WTILE * zoomCur.current - size.current.h / 2;
   }, []);
 
   // 상호작용 (대상 타일)
   const interact = useCallback((tx, ty) => {
     if (cooldown.current > 0) return;
-    const st = stateRef.current;
-    // 배치 모드
+    const M = getMap();
     if (placeRef.current) {
       const pdef = PLACEABLES[placeRef.current];
-      const blocked = !isWalkable(tx, ty, removedSet(), placedSolid()) || buildingHitAt(tx, ty);
-      if (blocked || terrainAt(tx, ty) === T.SOIL) return;
-      actions.place(placeRef.current, tx, ty, { wood: pdef.wood, stone: pdef.stone });
-      cooldown.current = 0.2;
-      return;
+      const blocked = !M.isWalkable(tx, ty, removedSet(), placedSolid()) || M.buildingHitAt(tx, ty);
+      if (blocked || M.terrainAt(tx, ty) === T.SOIL) return;
+      actions.place(placeRef.current, tx, ty, { wood: pdef.wood, stone: pdef.stone }, M.id);
+      cooldown.current = 0.2; return;
     }
-    // 건물/문 → 진입
-    const b = buildingHitAt(tx, ty);
+    const b = M.buildingHitAt(tx, ty);
     if (b) { setActiveBuilding(b); return; }
-    // 도구별 행동
     const tool = toolRef.current;
-    const o = objectAt(tx, ty);
+    const o = M.objectAt(tx, ty);
     const rm = removedSet();
-    if (tool === 'axe' && o && o.type === 'tree' && !rm.has(`${tx},${ty}`)) {
-      actions.chop(`${tx},${ty}`); cooldown.current = 0.3; return;
-    }
-    if (tool === 'pickaxe' && o && o.type === 'rock' && !rm.has(`${tx},${ty}`)) {
-      actions.mine(`${tx},${ty}`); cooldown.current = 0.3; return;
-    }
+    if (tool === 'axe' && o && o.type === 'tree' && !rm.has(`${tx},${ty}`)) { actions.chop(`${M.id}:${tx},${ty}`); cooldown.current = 0.28; return; }
+    if (tool === 'pickaxe' && o && o.type === 'rock' && !rm.has(`${tx},${ty}`)) { actions.mine(`${M.id}:${tx},${ty}`); cooldown.current = 0.28; return; }
     if (tool === 'rod') {
-      const nearWater = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(
-        ([dx, dy]) => terrainAt(tx + dx, ty + dy) === T.WATER
-      );
-      if (nearWater) { actions.fish('lake'); cooldown.current = 0.35; return; }
+      const near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => M.terrainAt(tx + dx, ty + dy) === T.WATER);
+      if (near) { actions.fish('lake'); cooldown.current = 0.35; return; }
     }
     if (tool === 'seeds') {
-      const idx = plotIndexAt(tx, ty);
-      if (idx >= 0 && idx < st.farm.length) {
-        const plot = st.farm[idx];
+      const idx = M.plotIndexAt(tx, ty);
+      if (idx >= 0 && idx < stateRef.current.farm.length) {
+        const plot = stateRef.current.farm[idx];
         if (!plot) actions.plant(idx, cropRef.current);
-        else {
-          const crop = CROPS[plot.cropId];
-          if (st.day - plot.plantedDay >= crop.growthDays) actions.harvest(idx);
-        }
+        else { const crop = CROPS[plot.cropId]; if (stateRef.current.day - plot.plantedDay >= crop.growthDays) actions.harvest(idx); }
         cooldown.current = 0.2;
       }
     }
   }, [actions, removedSet, placedSolid]);
 
-  // 정면 타일 상호작용 (키보드 액션)
+  // 정면/주변 상호작용
   const interactFront = useCallback(() => {
     const p = player.current;
-    const fx = Math.floor(p.x) + (p.facing === 'left' ? -1 : p.facing === 'right' ? 1 : 0);
-    const fy = Math.floor(p.y) + (p.facing === 'up' ? -1 : p.facing === 'down' ? 1 : 0);
-    interact(fx, fy);
-  }, [interact]);
+    const M = getMap();
+    const cx = Math.floor(p.x), cy = Math.floor(p.y);
+    const fx = cx + (p.facing === 'left' ? -1 : p.facing === 'right' ? 1 : 0);
+    const fy = cy + (p.facing === 'up' ? -1 : p.facing === 'down' ? 1 : 0);
+    if (placeRef.current) { interact(fx, fy); return; }
+    const cands = [[fx, fy]];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cands.push([cx + dx, cy + dy]);
+    const rm = removedSet();
+    const tool = toolRef.current;
+    const match = (tx, ty) => {
+      const b = M.buildingHitAt(tx, ty);
+      if (b && b.door.x === tx && b.door.y === ty) return true;
+      if (tool === 'axe') { const o = M.objectAt(tx, ty); return o && o.type === 'tree' && !rm.has(`${tx},${ty}`); }
+      if (tool === 'pickaxe') { const o = M.objectAt(tx, ty); return o && o.type === 'rock' && !rm.has(`${tx},${ty}`); }
+      if (tool === 'rod') return M.terrainAt(tx, ty) === T.WATER;
+      if (tool === 'seeds') return M.plotIndexAt(tx, ty) >= 0;
+      return false;
+    };
+    let best = null, bd = 99;
+    for (const [tx, ty] of cands) {
+      if (!match(tx, ty)) continue;
+      const d = Math.hypot(tx + 0.5 - p.x, ty + 0.5 - p.y);
+      if (d < bd) { bd = d; best = [tx, ty]; }
+    }
+    interact(best ? best[0] : fx, best ? best[1] : fy);
+  }, [interact, removedSet]);
 
   // 키 입력
   useEffect(() => {
     const down = (e) => {
       if (modalRef.current) { if (e.key === 'Escape') setActiveBuilding(null); return; }
       const k = e.key.toLowerCase();
-      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) e.preventDefault();
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
       if (k === ' ' || k === 'e') { interactFront(); return; }
-      if (k === '1') setTool('axe');
-      else if (k === '2') setTool('pickaxe');
-      else if (k === '3') setTool('rod');
-      else if (k === '4') setTool('seeds');
+      if (k === '1') setTool('axe'); else if (k === '2') setTool('pickaxe');
+      else if (k === '3') setTool('rod'); else if (k === '4') setTool('seeds');
+      else if (k === 'm') setShowMap((v) => !v);
       else if (k === 'escape') setPlaceType(null);
       else keys.current.add(k);
     };
@@ -139,24 +171,23 @@ export function useWorld({ state, time, actions }) {
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
   }, [interactFront]);
 
-  // 고용한 일꾼을 맵 위 NPC로 표현 (최대 12명 렌더)
+  // 고용 일꾼 NPC (마을에서만)
   const workersKey = state.workers.map((w) => w.id + w.job).join(',');
   useEffect(() => {
     const arr = [];
-    state.workers.slice(0, 14).forEach((w, total) => {
-      const site = JOB_SITE[JOBS[w.job].site];
-      const ox = (total % 3) - 1, oy = Math.floor(total / 3) % 2;
-      const cx = site.x + ox, cy = site.y + oy;
-      arr.push({
-        color: JOBS[w.job].color, x: cx + 0.5, y: cy + 0.5, wp: 0, wait: total * 0.3,
-        path: [[cx, cy], [cx + 1, cy], [cx + 1, cy + 1], [cx, cy + 1]],
+    if (mapIdRef.current === 'village') {
+      state.workers.slice(0, 14).forEach((w, total) => {
+        const site = JOB_SITE[JOBS[w.job].site];
+        const ox = (total % 3) - 1, oy = Math.floor(total / 3) % 2;
+        const cx = site.x + ox, cy = site.y + oy;
+        arr.push({ color: JOBS[w.job].color, x: cx + 0.5, y: cy + 0.5, wp: 0, wait: total * 0.3, path: [[cx, cy], [cx + 1, cy], [cx + 1, cy + 1], [cx, cy + 1]] });
       });
-    });
+    }
     workerNpcs.current = arr;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workersKey]);
+  }, [workersKey, mapId]);
 
-  // 캔버스 크기 맞추기
+  // 캔버스 크기
   useEffect(() => {
     const fit = () => {
       const el = wrapRef.current, cv = canvasRef.current;
@@ -179,7 +210,7 @@ export function useWorld({ state, time, actions }) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       update(dt, now);
-      render(now);
+      render();
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -187,24 +218,20 @@ export function useWorld({ state, time, actions }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function moveAxis(p, nx, ny, rm, ps) {
-    // 박스 4코너 충돌 검사
-    const corners = [
-      [nx - RADIUS, ny - RADIUS], [nx + RADIUS, ny - RADIUS],
-      [nx - RADIUS, ny + RADIUS], [nx + RADIUS, ny + RADIUS],
-    ];
-    for (const [cx, cy] of corners) {
-      if (!isWalkable(Math.floor(cx), Math.floor(cy), rm, ps)) return false;
+  function moveAxis(nx, ny, M, rm, ps) {
+    for (const [cx, cy] of [[nx - RADIUS, ny - RADIUS], [nx + RADIUS, ny - RADIUS], [nx - RADIUS, ny + RADIUS], [nx + RADIUS, ny + RADIUS]]) {
+      if (!M.isWalkable(Math.floor(cx), Math.floor(cy), rm, ps)) return false;
     }
     return true;
   }
 
   function update(dt, now) {
     if (cooldown.current > 0) cooldown.current -= dt;
+    if (travelCd.current > 0) travelCd.current -= dt;
     const p = player.current;
+    const M = getMap();
     const rm = removedSet(), ps = placedSolid();
 
-    // 이동
     if (!modalRef.current) {
       let dx = 0, dy = 0;
       const k = keys.current;
@@ -212,7 +239,6 @@ export function useWorld({ state, time, actions }) {
       if (k.has('s') || k.has('arrowdown')) dy += 1;
       if (k.has('a') || k.has('arrowleft')) dx -= 1;
       if (k.has('d') || k.has('arrowright')) dx += 1;
-      // 조이스틱
       if (joy.current.active) { dx += joy.current.dx; dy += joy.current.dy; }
       const len = Math.hypot(dx, dy);
       if (len > 0.1) {
@@ -220,68 +246,59 @@ export function useWorld({ state, time, actions }) {
         if (Math.abs(dx) > Math.abs(dy)) p.facing = dx < 0 ? 'left' : 'right';
         else p.facing = dy < 0 ? 'up' : 'down';
         const step = PLAYER_SPEED * dt;
-        const nx = p.x + dx * step, ny = p.y + dy * step;
-        if (moveAxis(p, nx, p.y, rm, ps)) p.x = nx;
-        if (moveAxis(p, p.x, ny, rm, ps)) p.y = ny;
-        p.moveT += dt;
-        p.frame = Math.floor(p.moveT * 8) % 2;
+        if (moveAxis(p.x + dx * step, p.y, M, rm, ps)) p.x += dx * step;
+        if (moveAxis(p.x, p.y + dy * step, M, rm, ps)) p.y += dy * step;
+        p.moveT += dt; p.frame = Math.floor(p.moveT * 8) % 2;
+        // 출구 → 맵 이동
+        if (travelCd.current <= 0) {
+          const ex = M.exitAt(Math.floor(p.x), Math.floor(p.y));
+          if (ex) { travel(ex.to, ex.at); return; }
+        }
         // 문 진입
-        const d = doorAt(Math.floor(p.x), Math.floor(p.y));
+        const d = M.doorAt(Math.floor(p.x), Math.floor(p.y));
         if (d && !modalRef.current) setActiveBuilding(d);
       } else { p.frame = 0; }
     }
 
-    // NPC 이동 (주민 + 고용 일꾼)
     const stepNpc = (n, speed) => {
       if (n.wait > 0) { n.wait -= dt; return; }
       const [tx, ty] = n.path[n.wp];
       const gx = tx + 0.5, gy = ty + 0.5;
-      const ddx = gx - n.x, ddy = gy - n.y;
-      const d = Math.hypot(ddx, ddy);
+      const ddx = gx - n.x, ddy = gy - n.y, d = Math.hypot(ddx, ddy);
       if (d < 0.08) { n.wp = (n.wp + 1) % n.path.length; n.wait = 0.6 + Math.random(); }
       else { const s = speed * dt; n.x += (ddx / d) * s; n.y += (ddy / d) * s; }
     };
     for (const n of npcs.current) stepNpc(n, 2.2);
     for (const n of workerNpcs.current) stepNpc(n, 1.8);
 
-    // 시계 (낮/밤) → 하루 경과 시 시뮬 진행
     const mult = SPEED[speedRef.current];
-    if (mult > 0) {
-      clock.current += (dt / DAY_REAL_SEC) * mult;
-      if (clock.current >= 1) { clock.current -= 1; actions.nextDay(); }
-    }
+    if (mult > 0) { clock.current += (dt / DAY_REAL_SEC) * mult; if (clock.current >= 1) { clock.current -= 1; actions.nextDay(); } }
 
-    // 줌 부드럽게
     zoomCur.current += (zoomRef.current - zoomCur.current) * Math.min(1, dt * 8);
     const tileSize = WTILE * zoomCur.current;
     const { w, h } = size.current;
-    let tx = p.x * tileSize - w / 2;
-    let ty = p.y * tileSize - h / 2;
-    tx = Math.max(0, Math.min(Math.max(0, WORLD_W * tileSize - w), tx));
-    ty = Math.max(0, Math.min(Math.max(0, WORLD_H * tileSize - h), ty));
-    if (WORLD_W * tileSize < w) tx = (WORLD_W * tileSize - w) / 2;
-    if (WORLD_H * tileSize < h) ty = (WORLD_H * tileSize - h) / 2;
-    // 카메라 부드럽게 따라가기
+    let tcx = p.x * tileSize - w / 2, tcy = p.y * tileSize - h / 2;
+    tcx = Math.max(0, Math.min(Math.max(0, M.W * tileSize - w), tcx));
+    tcy = Math.max(0, Math.min(Math.max(0, M.H * tileSize - h), tcy));
+    if (M.W * tileSize < w) tcx = (M.W * tileSize - w) / 2;
+    if (M.H * tileSize < h) tcy = (M.H * tileSize - h) / 2;
     const ease = Math.min(1, dt * 7);
-    cam.current.x += (tx - cam.current.x) * ease;
-    cam.current.y += (ty - cam.current.y) * ease;
+    cam.current.x += (tcx - cam.current.x) * ease;
+    cam.current.y += (tcy - cam.current.y) * ease;
 
-    // HUD 동기화 (가끔)
     if (!update._t || now - update._t > 250) {
       update._t = now;
       setHud({ clock: clockString(clock.current), night: isNight(clock.current) });
     }
   }
 
-  // 오프스크린 지형 캐시 생성 (계절마다 한 번)
-  function buildTerrainCache(pal) {
+  function buildTerrainCache(M, pal) {
     const c = document.createElement('canvas');
-    c.width = WORLD_W * WTILE; c.height = WORLD_H * WTILE;
+    c.width = M.W * WTILE; c.height = M.H * WTILE;
     const cx = c.getContext('2d');
     cx.imageSmoothingEnabled = false;
-    for (let ty = 0; ty < WORLD_H; ty++)
-      for (let tx = 0; tx < WORLD_W; tx++)
-        drawTile(cx, TERRAIN[ty][tx], tx, ty, tx * WTILE, ty * WTILE, WTILE, pal);
+    for (let ty = 0; ty < M.H; ty++) for (let tx = 0; tx < M.W; tx++)
+      drawTile(cx, M.TERRAIN[ty][tx], tx, ty, tx * WTILE, ty * WTILE, WTILE, pal);
     return c;
   }
 
@@ -294,103 +311,105 @@ export function useWorld({ state, time, actions }) {
     ctx.clearRect(0, 0, w, h);
 
     const st = stateRef.current;
+    const M = getMap();
     const pal = paletteFor(seasonRef.current);
     const tileSize = WTILE * zoomCur.current;
     const camX = cam.current.x, camY = cam.current.y;
-    const x0 = Math.max(0, Math.floor(camX / tileSize));
-    const y0 = Math.max(0, Math.floor(camY / tileSize));
-    const x1 = Math.min(WORLD_W, Math.ceil((camX + w) / tileSize));
-    const y1 = Math.min(WORLD_H, Math.ceil((camY + h) / tileSize));
+    const x0 = Math.max(0, Math.floor(camX / tileSize)), y0 = Math.max(0, Math.floor(camY / tileSize));
+    const x1 = Math.min(M.W, Math.ceil((camX + w) / tileSize)), y1 = Math.min(M.H, Math.ceil((camY + h) / tileSize));
     const now = performance.now();
     const wind = now / 700;
     const night = isNight(clock.current);
 
-    // 지형: 캐시 한 장을 카메라 위치에 맞춰 blit (60FPS 핵심)
-    if (!terrainCache.current || cacheSeason.current !== seasonRef.current) {
-      terrainCache.current = buildTerrainCache(pal);
-      cacheSeason.current = seasonRef.current;
-    }
-    ctx.drawImage(terrainCache.current, -camX, -camY, WORLD_W * tileSize, WORLD_H * tileSize);
+    const ck = `${M.id}:${seasonRef.current}`;
+    if (!terrainCache.current || cacheKey.current !== ck) { terrainCache.current = buildTerrainCache(M, pal); cacheKey.current = ck; }
+    ctx.drawImage(terrainCache.current, -camX, -camY, M.W * tileSize, M.H * tileSize);
 
-    // 물 반짝임 (동적)
-    for (let ty = y0; ty < y1; ty++)
-      for (let tx = x0; tx < x1; tx++)
-        if (TERRAIN[ty][tx] === T.WATER)
-          drawWaterShimmer(ctx, tx * tileSize - camX, ty * tileSize - camY, tileSize, pal, now);
+    for (let ty = y0; ty < y1; ty++) for (let tx = x0; tx < x1; tx++)
+      if (M.TERRAIN[ty][tx] === T.WATER) drawWaterShimmer(ctx, tx * tileSize - camX, ty * tileSize - camY, tileSize, pal, now);
 
-    // 깊이 정렬 스프라이트
-    const rm = new Set(st.removed.map((r) => r.key));
+    const rm = removedSet();
     const sprites = [];
-    for (const o of OBJECTS) {
+    for (const o of M.OBJECTS) {
       if (o.x < x0 - 1 || o.x > x1 || o.y < y0 - 1 || o.y > y1) continue;
       if (rm.has(`${o.x},${o.y}`)) continue;
       const ox = o.x * tileSize - camX, oy = o.y * tileSize - camY;
       sprites.push({ y: o.y + 0.9, fn: () => drawObject(ctx, o, ox, oy, tileSize, pal, wind) });
     }
-    for (let i = 0; i < st.farm.length; i++) {
-      const plot = st.farm[i]; if (!plot) continue;
-      const px = FARM.x + (i % FARM.cols), py = FARM.y + Math.floor(i / FARM.cols);
-      const crop = CROPS[plot.cropId];
-      const ratio = Math.min(1, (st.day - plot.plantedDay) / crop.growthDays);
-      sprites.push({ y: py + 0.95, fn: () => drawCrop(ctx, plot.cropId, ratio, ratio >= 1, px * tileSize - camX, py * tileSize - camY, tileSize) });
+    if (M.FARM) {
+      for (let i = 0; i < st.farm.length; i++) {
+        const plot = st.farm[i]; if (!plot) continue;
+        const px = M.FARM.x + (i % M.FARM.cols), py = M.FARM.y + Math.floor(i / M.FARM.cols);
+        const crop = CROPS[plot.cropId];
+        const ratio = Math.min(1, (st.day - plot.plantedDay) / crop.growthDays);
+        sprites.push({ y: py + 0.95, fn: () => drawCrop(ctx, plot.cropId, ratio, ratio >= 1, px * tileSize - camX, py * tileSize - camY, tileSize) });
+      }
     }
     for (const pl of st.placed) {
+      if ((pl.map || 'village') !== M.id) continue;
       sprites.push({ y: pl.y + 0.95, fn: () => drawPlaceable(ctx, pl.type, pl.x * tileSize - camX, pl.y * tileSize - camY, tileSize, night) });
     }
-    for (const b of BUILDINGS) {
+    for (const b of M.BUILDINGS) {
       sprites.push({ y: b.y + b.h, fn: () => drawBuilding(ctx, b, b.x * tileSize - camX, b.y * tileSize - camY, tileSize, night) });
     }
     const nf = Math.floor(now / 220) % 2;
-    for (const n of npcs.current) {
-      sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color, nf) });
-    }
-    for (const n of workerNpcs.current) {
-      if (n.x < x0 - 1 || n.x > x1 + 1 || n.y < y0 - 1 || n.y > y1 + 1) continue;
-      sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color, nf) });
-    }
+    for (const n of npcs.current) sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color, nf) });
+    for (const n of workerNpcs.current) sprites.push({ y: n.y, fn: () => drawNPC(ctx, n.x * tileSize - camX - tileSize / 2, n.y * tileSize - camY - tileSize / 2, tileSize, n.color, nf) });
     const p = player.current;
     sprites.push({ y: p.y, fn: () => drawPlayer(ctx, p.x * tileSize - camX - tileSize / 2, p.y * tileSize - camY - tileSize / 2, tileSize, p.facing, p.frame) });
 
     sprites.sort((a, b) => a.y - b.y);
     for (const s of sprites) s.fn();
 
-    // 배치 모드 커서
+    // 출구 표시 (노란 테두리 + 화살표)
+    for (const ex of M.EXITS) {
+      const exx = ex.x * tileSize - camX, exy = ex.y * tileSize - camY;
+      ctx.fillStyle = 'rgba(255,220,80,0.25)'; ctx.fillRect(exx, exy, tileSize, tileSize);
+      ctx.strokeStyle = 'rgba(255,220,80,0.9)'; ctx.lineWidth = 2; ctx.strokeRect(exx, exy, tileSize, tileSize);
+    }
+
     if (placeRef.current) {
       const tx = Math.floor(p.x) + (p.facing === 'left' ? -1 : p.facing === 'right' ? 1 : 0);
       const ty = Math.floor(p.y) + (p.facing === 'up' ? -1 : p.facing === 'down' ? 1 : 0);
-      ctx.strokeStyle = 'rgba(255,255,120,0.9)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,255,120,0.9)'; ctx.lineWidth = 2;
       ctx.strokeRect(tx * tileSize - camX, ty * tileSize - camY, tileSize, tileSize);
     }
 
-    // 낮/노을/밤 환경광
     const ov = ambientOverlay(clock.current);
     if (ov.alpha > 0.002) { ctx.fillStyle = ov.color; ctx.fillRect(0, 0, w, h); }
-    // 가로등/건물 빛 (밤)
     if (night) {
       ctx.globalCompositeOperation = 'lighter';
-      for (const pl of st.placed) {
-        if (PLACEABLES[pl.type]?.light)
-          drawLampGlow(ctx, pl.x * tileSize - camX, pl.y * tileSize - camY, tileSize);
-      }
+      for (const pl of st.placed) if ((pl.map || 'village') === M.id && PLACEABLES[pl.type]?.light) drawLampGlow(ctx, pl.x * tileSize - camX, pl.y * tileSize - camY, tileSize);
       ctx.globalCompositeOperation = 'source-over';
+    }
+
+    if (showMapRef.current && miniRef.current && terrainCache.current) {
+      const mc = miniRef.current, mw = mc.width, mh = mc.height, mctx = mc.getContext('2d');
+      mctx.imageSmoothingEnabled = false;
+      mctx.drawImage(terrainCache.current, 0, 0, mw, mh);
+      const sxr = mw / M.W, syr = mh / M.H;
+      mctx.fillStyle = '#b5713e';
+      for (const b of M.BUILDINGS) mctx.fillRect(b.x * sxr, b.y * syr, Math.max(2, b.w * sxr), Math.max(2, b.h * syr));
+      mctx.fillStyle = '#ffd24a'; for (const ex of M.EXITS) mctx.fillRect(ex.x * sxr - 1, ex.y * syr - 1, 3, 3);
+      mctx.fillStyle = '#7da7ff';
+      for (const n of npcs.current) mctx.fillRect(n.x * sxr - 1, n.y * syr - 1, 2, 2);
+      for (const n of workerNpcs.current) mctx.fillRect(n.x * sxr - 1, n.y * syr - 1, 2, 2);
+      mctx.fillStyle = '#ff3b3b'; mctx.fillRect(p.x * sxr - 2, p.y * syr - 2, 4, 4);
+      mctx.strokeStyle = 'rgba(255,255,255,0.7)'; mctx.lineWidth = 1;
+      mctx.strokeRect((camX / tileSize) * sxr, (camY / tileSize) * syr, (w / tileSize) * sxr, (h / tileSize) * syr);
     }
   }
 
-  // 조이스틱 (모바일)
   const joyStart = useCallback(() => { joy.current.active = true; }, []);
   const joyMove = useCallback((dx, dy) => { joy.current.dx = dx; joy.current.dy = dy; }, []);
   const joyEnd = useCallback(() => { joy.current.active = false; joy.current.dx = 0; joy.current.dy = 0; }, []);
 
-  // 캔버스 클릭 → 타일 상호작용
   const onCanvasClick = useCallback((e) => {
     if (modalRef.current) return;
     const cv = canvasRef.current; const rect = cv.getBoundingClientRect();
     const cssX = e.clientX - rect.left, cssY = e.clientY - rect.top;
     const tileSize = WTILE * zoomCur.current;
-    const tx = Math.floor((cssX + cam.current.x) / tileSize);
-    const ty = Math.floor((cssY + cam.current.y) / tileSize);
-    interact(tx, ty);
+    interact(Math.floor((cssX + cam.current.x) / tileSize), Math.floor((cssY + cam.current.y) / tileSize));
   }, [interact]);
 
   return {
@@ -399,7 +418,8 @@ export function useWorld({ state, time, actions }) {
     placeType, setPlaceType,
     zoom, setZoom, speedId, setSpeedId,
     activeBuilding, setActiveBuilding,
-    hud,
+    hud, showMap, setShowMap, miniRef,
+    mapId, mapName: mapId === 'village' ? '마을' : '들판',
     joy: { joyStart, joyMove, joyEnd },
     interactFront,
   };

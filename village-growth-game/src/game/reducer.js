@@ -312,7 +312,7 @@ export function gameReducer(state, action) {
       };
     }
     case 'PLACE': {
-      const { ptype, x, y, cost } = action;
+      const { ptype, x, y, cost, map } = action;
       if (state.wood < cost.wood || state.stone < cost.stone) {
         return { ...state, log: log(state, '자원이 부족합니다. (나무/돌 필요)', 'warn') };
       }
@@ -320,7 +320,7 @@ export function gameReducer(state, action) {
         ...state,
         wood: state.wood - cost.wood,
         stone: state.stone - cost.stone,
-        placed: [...state.placed, { type: ptype, x, y }],
+        placed: [...state.placed, { type: ptype, x, y, map: map || 'village' }],
         log: log(state, `🏗️ 구조물을 설치했습니다.`, 'good'),
       };
     }
