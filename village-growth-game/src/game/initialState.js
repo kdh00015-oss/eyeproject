@@ -102,6 +102,8 @@ export function createInitialState(classId) {
     // 도감(발견한 재화) + 달성한 업적
     dex: {},
     achieved: [],
+    // 가축장 확장 레벨 (수용 마릿수)
+    ranchLevel: 1,
     // 하루 행동 제한
     fishUsed: 0,
     // 날씨 (advanceDay 첫 호출 전 기본값)

@@ -23,6 +23,9 @@ export const PLACEABLES = {
   school: { id: 'school', name: '학교', icon: '🏫', cost: { gold: 120, wood: 18, stone: 10 }, solid: true, unlock: 2, effect: { education: 18, culture: 4 }, desc: '교육 +18' },
   hospital: { id: 'hospital', name: '병원', icon: '🏥', cost: { gold: 160, wood: 16, stone: 16 }, solid: true, unlock: 3, effect: { hygiene: 16, safety: 8 }, desc: '위생·안전 +' },
   watchtower: { id: 'watchtower', name: '경비탑', icon: '🗼', cost: { gold: 100, wood: 14, stone: 12 }, solid: true, unlock: 3, effect: { safety: 18 }, desc: '안전 +18' },
+  // 어업 시설 (설치형 자동 어획) — 매일 물고기를 생산
+  fishtrap: { id: 'fishtrap', name: '통발', icon: '🦐', cost: { gold: 50, wood: 8 }, solid: false, unlock: 1, dailyFish: 1, desc: '매일 물고기 1마리 자동 어획' },
+  fishfarm: { id: 'fishfarm', name: '양식장', icon: '🐟', cost: { gold: 180, wood: 18, stone: 8 }, solid: true, unlock: 2, dailyFish: 3, feedPerDay: 2, desc: '매일 물고기 3마리 양식(사료 2 소비)' },
 };
 
 // 배치물들의 효과 합산

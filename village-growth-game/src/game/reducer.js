@@ -11,7 +11,7 @@ import {
 import { GOODS } from './goods';
 import { CROPS } from './crops';
 import { FISHING_SPOTS } from './fishing';
-import { ANIMALS } from './livestock';
+import { ANIMALS, ranchCap, ranchUpgradeCost, totalAnimals, RANCH_MAX_LEVEL } from './livestock';
 import { BUILDINGS, buildingCost } from './buildings';
 import { RESEARCH_FIELDS, researchCost, MAX_RESEARCH_LEVEL } from './research';
 import { JOBS, randomName } from './workers';
@@ -186,6 +186,9 @@ export function gameReducer(state, action) {
     case 'BUY_ANIMAL': {
       const animal = ANIMALS[action.animalId];
       const cost = Math.round(animal.buyCost * cbonus(state).buy);
+      if (totalAnimals(state.livestock) >= ranchCap(state.ranchLevel)) {
+        return { ...state, log: log(state, `가축장이 가득 찼습니다 (최대 ${ranchCap(state.ranchLevel)}마리). 가축장을 확장하세요.`, 'warn') };
+      }
       if (state.money < cost) {
         return { ...state, log: log(state, '골드가 부족합니다.', 'warn') };
       }
@@ -218,6 +221,23 @@ export function gameReducer(state, action) {
         money: state.money + refund,
         livestock,
         log: log(state, `${animal.name}을(를) ${refund}골드에 처분했습니다.`, 'info'),
+      };
+    }
+
+    case 'UPGRADE_RANCH': {
+      const level = state.ranchLevel || 1;
+      if (level >= RANCH_MAX_LEVEL) return { ...state, log: log(state, '가축장이 이미 최대 크기입니다.', 'info') };
+      const c = ranchUpgradeCost(level);
+      if (state.money < c.gold || state.wood < c.wood || state.stone < c.stone) {
+        return { ...state, log: log(state, `확장에 자원이 부족합니다. (💰${c.gold} 🪵${c.wood} 🪨${c.stone})`, 'warn') };
+      }
+      return {
+        ...state,
+        money: state.money - c.gold,
+        wood: state.wood - c.wood,
+        stone: state.stone - c.stone,
+        ranchLevel: level + 1,
+        log: log(state, `🐄 가축장을 확장했습니다! (수용 ${ranchCap(level + 1)}마리)`, 'good'),
       };
     }
 

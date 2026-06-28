@@ -13,7 +13,7 @@ import {
   MAX_LOG,
 } from './constants';
 import { BUILDINGS } from './buildings';
-import { ANIMALS } from './livestock';
+import { ANIMALS, ranchCap } from './livestock';
 import { GOODS, EDIBLE_IDS } from './goods';
 import { RESEARCH_FIELDS } from './research';
 import { CROPS } from './crops';
@@ -22,7 +22,7 @@ import {
   JOBS, OUTPUT, levelFromXp, levelMult,
   WORK_FATIGUE, REST_RECOVER, REST_THRESHOLD, REST_BACK, UNPAID_PENALTY,
 } from './workers';
-import { placedEffects } from './world/worldgen';
+import { placedEffects, PLACEABLES } from './world/worldgen';
 import { armyUpkeep } from './military';
 import { cbonus } from './classes';
 import { rollEvent } from './events';
@@ -211,6 +211,39 @@ export function advanceDay(state) {
   next.feed = feed;
   if (feedShort) {
     log = pushLog(log, day, '🌿 사료가 부족해 일부 가축이 굶고 있습니다.', 'warn');
+  }
+
+  // 2.1) 가축 번식: 같은 종 2마리 이상 + 빈자리 + 사료 있을 때 확률로 새끼
+  const ranchMax = ranchCap(state.ranchLevel);
+  let animalTotal = Object.values(next.livestock).reduce((s, c) => s + c.count, 0);
+  if (next.feed > 0) {
+    for (const [id, animal] of Object.entries(ANIMALS)) {
+      if (animalTotal >= ranchMax) break;
+      const cell = next.livestock[id];
+      if (cell.count >= 2 && Math.random() < Math.min(0.25, 0.05 * cell.count)) {
+        cell.count += 1; animalTotal += 1;
+        log = pushLog(log, day, `${animal.icon} ${animal.name}의 새끼가 태어났습니다!`, 'good');
+      }
+    }
+  }
+
+  // 2.2) 어업 시설(통발/양식장): 매일 물고기 자동 어획 (양식장은 사료 소비)
+  let trapFish = 0;
+  for (const pl of state.placed) {
+    const def = PLACEABLES[pl.type];
+    if (!def || !def.dailyFish) continue;
+    if (def.feedPerDay) {
+      if (next.feed >= def.feedPerDay) next.feed -= def.feedPerDay; else continue;
+    }
+    for (let i = 0; i < def.dailyFish; i++) {
+      const f = weightedPick(FISHING_SPOTS.lake.fish);
+      next.inventory[f.id] = (next.inventory[f.id] || 0) + 1;
+      next.dex[f.id] = true;
+    }
+    trapFish += def.dailyFish;
+  }
+  if (trapFish > 0) {
+    log = pushLog(log, day, `🦐 어업 시설에서 물고기 ${trapFish}마리를 얻었습니다.`, 'good');
   }
 
   // 2.5) 일꾼 자동 노동 (개별 숙련도/행복도/휴식 + 자동 생산 + 연구 효율)

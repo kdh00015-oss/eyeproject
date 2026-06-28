@@ -31,6 +31,7 @@ function mergeBase(data) {
     class: data.class || base.class,
     dex: { ...(data.dex || {}) },
     achieved: Array.isArray(data.achieved) ? data.achieved : [],
+    ranchLevel: data.ranchLevel || base.ranchLevel,
   };
 }
 

@@ -69,3 +69,16 @@ export const ANIMAL_PRODUCTS = {
 
 // 사료 (시장에서 구매하는 소모품)
 export const FEED = { id: 'feed', name: '사료', icon: '🌿', buyPrice: 2 };
+
+// --- 가축장 용량 + 확장(구매) ---
+export const RANCH_BASE_CAP = 8; // 1레벨 수용 마릿수
+export const RANCH_STEP = 6; // 확장당 +수용
+export const RANCH_MAX_LEVEL = 6;
+export function ranchCap(level) { return RANCH_BASE_CAP + (Math.max(1, level || 1) - 1) * RANCH_STEP; }
+export function ranchUpgradeCost(level) {
+  const l = Math.max(1, level || 1);
+  return { gold: 150 * l, wood: 10 * l, stone: 5 * l };
+}
+export function totalAnimals(livestock) {
+  return Object.values(livestock).reduce((s, c) => s + (c.count || 0), 0);
+}
