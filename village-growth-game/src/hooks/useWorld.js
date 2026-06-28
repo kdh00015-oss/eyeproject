@@ -149,11 +149,17 @@ export function useWorld({ state, time, actions }) {
     }
     if (tool === 'seeds') {
       const idx = M.plotIndexAt(tx, ty);
-      if (idx >= 0 && idx < stateRef.current.farm.length) {
-        const plot = stateRef.current.farm[idx];
-        if (!plot) actions.plant(idx, cropRef.current);
-        else { const crop = CROPS[plot.cropId]; if (stateRef.current.day - plot.plantedDay >= crop.growthDays) actions.harvest(idx); }
-        cooldown.current = 0.2;
+      if (idx >= 0) {
+        const farm = stateRef.current.farm;
+        if (idx >= farm.length) {
+          // 미개간(잠긴) 칸: 바로 다음 칸이면 개간, 아니면 무시
+          if (idx === farm.length) actions.reclaim();
+        } else {
+          const plot = farm[idx];
+          if (!plot) actions.plant(idx, cropRef.current);
+          else actions.harvest(idx); // 익었는지는 리듀서가 판단
+        }
+        cooldown.current = 0.25;
       }
     }
   }, [actions, removedSet, placedSolid]);
@@ -396,12 +402,23 @@ export function useWorld({ state, time, actions }) {
       });
     }
     if (M.FARM) {
+      const fcols = M.FARM.cols, fmax = M.FARM.cols * M.FARM.rows;
       for (let i = 0; i < st.farm.length; i++) {
         const plot = st.farm[i]; if (!plot) continue;
-        const px = M.FARM.x + (i % M.FARM.cols), py = M.FARM.y + Math.floor(i / M.FARM.cols);
+        const px = M.FARM.x + (i % fcols), py = M.FARM.y + Math.floor(i / fcols);
         const crop = CROPS[plot.cropId];
         const ratio = Math.min(1, (st.day - plot.plantedDay) / crop.growthDays);
         sprites.push({ y: py + 0.95, fn: () => drawCrop(ctx, plot.cropId, ratio, ratio >= 1, px * tileSize - camX, py * tileSize - camY, tileSize) });
+      }
+      // 미개간(잠긴) 칸: 어둡게 + 🔒 (개간하면 사용 가능)
+      for (let i = st.farm.length; i < fmax; i++) {
+        const px = M.FARM.x + (i % fcols), py = M.FARM.y + Math.floor(i / fcols);
+        sprites.push({ y: py + 0.5, fn: () => {
+          const dx = px * tileSize - camX, dy = py * tileSize - camY;
+          ctx.fillStyle = 'rgba(20,16,10,0.42)'; ctx.fillRect(dx, dy, tileSize, tileSize);
+          ctx.font = `${Math.round(tileSize * 0.42)}px sans-serif`; ctx.textAlign = 'center';
+          ctx.fillText('🔒', dx + tileSize / 2, dy + tileSize * 0.66); ctx.textAlign = 'left';
+        } });
       }
     }
     for (const pl of st.placed) {
