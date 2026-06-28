@@ -51,6 +51,7 @@ export function useGame() {
       chop: (key) => dispatch({ type: 'CHOP', key }),
       mine: (key) => dispatch({ type: 'MINE', key }),
       place: (ptype, x, y, map) => dispatch({ type: 'PLACE', ptype, x, y, map }),
+      removePlaced: (x, y, map) => dispatch({ type: 'REMOVE_PLACED', x, y, map }),
       research: (field) => dispatch({ type: 'RESEARCH', field }),
       explore: () => dispatch({ type: 'EXPLORE' }),
       openTrade: (villageId) => dispatch({ type: 'OPEN_TRADE', villageId }),

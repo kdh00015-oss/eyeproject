@@ -54,6 +54,8 @@ export function useWorld({ state, time, actions }) {
   const [tool, setTool] = useState('axe');
   const [selectedCrop, setSelectedCrop] = useState('wheat');
   const [placeType, setPlaceType] = useState(null);
+  const [removeMode, setRemoveMode] = useState(false);
+  const removeModeRef = useRef(removeMode); removeModeRef.current = removeMode;
   const [zoom, setZoom] = useState(1.4);
   const [speedId, setSpeedId] = useState('x1');
   const [activeBuilding, setActiveBuilding] = useState(null);
@@ -124,6 +126,12 @@ export function useWorld({ state, time, actions }) {
   const interact = useCallback((tx, ty) => {
     if (cooldown.current > 0) return;
     const M = getMap();
+    // 철거/이동 모드: 배치한 구조물을 클릭하면 철거(자원 환급)
+    if (removeModeRef.current) {
+      const pl = stateRef.current.placed.find((p) => p.x === tx && p.y === ty && (p.map || 'village') === M.id);
+      if (pl) { actions.removePlaced(tx, ty, M.id); cooldown.current = 0.25; }
+      return;
+    }
     if (placeRef.current) {
       const blocked = !M.isWalkable(tx, ty, removedSet(), placedSolid()) || M.buildingHitAt(tx, ty);
       if (blocked || M.terrainAt(tx, ty) === T.SOIL) return;
@@ -174,6 +182,15 @@ export function useWorld({ state, time, actions }) {
     const cx = Math.floor(p.x), cy = Math.floor(p.y);
     const fx = cx + (p.facing === 'left' ? -1 : p.facing === 'right' ? 1 : 0);
     const fy = cy + (p.facing === 'up' ? -1 : p.facing === 'down' ? 1 : 0);
+    if (removeModeRef.current) {
+      const cands = [[fx, fy], [cx, cy]];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cands.push([cx + dx, cy + dy]);
+      for (const [tx, ty] of cands) {
+        const pl = stateRef.current.placed.find((q) => q.x === tx && q.y === ty && (q.map || 'village') === M.id);
+        if (pl) { actions.removePlaced(tx, ty, M.id); cooldown.current = 0.25; return; }
+      }
+      return;
+    }
     if (placeRef.current) { interact(fx, fy); return; }
     const cands = [[fx, fy]];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cands.push([cx + dx, cy + dy]);
@@ -204,6 +221,7 @@ export function useWorld({ state, time, actions }) {
       if (d < bd) { bd = d; best = [tx, ty]; }
     }
     interact(best ? best[0] : fx, best ? best[1] : fy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interact, removedSet]);
 
   // 키 입력
@@ -567,6 +585,7 @@ export function useWorld({ state, time, actions }) {
     canvasRef, wrapRef, onCanvasClick,
     tool, setTool, selectedCrop, setSelectedCrop,
     placeType, setPlaceType,
+    removeMode, setRemoveMode,
     zoom, setZoom, speedId, setSpeedId,
     activeBuilding, setActiveBuilding,
     hud, showMap, setShowMap, miniRef,

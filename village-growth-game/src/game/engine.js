@@ -162,8 +162,9 @@ export function advanceDay(state) {
   let workerSeedSpend = 0;
 
   // 벌목/채굴된 자연물 respawn (나무 8일, 바위 12일 후 복구)
-  const RESPAWN = { tree: 8, rock: 12 };
-  next.removed = state.removed.filter((r) => day - r.day < (RESPAWN[r.type] || 8));
+  // 채집한 나무/바위는 일정 일수가 지나면 다시 자라남(리셋)
+  const RESPAWN = { tree: 3, rock: 4 };
+  next.removed = state.removed.filter((r) => day - r.day < (RESPAWN[r.type] || 3));
 
   // 일일 퀘스트 리셋: 당일 기준치 갱신 + 일일(d로 시작) 보상기록 초기화
   next.dailyBase = { ...state.stats };

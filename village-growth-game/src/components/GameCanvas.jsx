@@ -195,6 +195,15 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
         );
       })() : null}
 
+      {/* 이동/철거 모드 안내 */}
+      {w.removeMode && !w.placeType && (
+        <div className="place-bar">
+          <span className="place-info">🔨 이동/철거 모드 — 설치한 건물을 클릭(또는 ✋)하면 철거하고 자원을 돌려받습니다.</span>
+          <span className="place-hint">다른 곳에 다시 지으면 = 이동</span>
+          <button className="mini-btn" onClick={() => w.setRemoveMode(false)}>끄기 ✕</button>
+        </div>
+      )}
+
       {/* 핫바 (도구 + 씨앗 작물 + 배치) */}
       {!overlayOpen && (
       <div className="hotbar">
@@ -232,6 +241,11 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
           );
         })()}
         <div className="build-strip">
+          <button
+            className={'slot small' + (w.removeMode ? ' on' : '')}
+            onClick={() => { w.setRemoveMode((v) => !v); w.setPlaceType(null); }}
+            title="이동/철거 모드: 설치한 건물을 눌러 철거(자원 환급). 다른 곳에 다시 지으면 이동됩니다."
+          >🔨</button>
           {Object.values(PLACEABLES).map((p) => {
             const locked = state.villageLevel < (p.unlock || 1);
             return (
@@ -239,7 +253,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
                 key={p.id}
                 className={'slot small' + (w.placeType === p.id ? ' on' : '') + (locked ? ' locked' : '')}
                 disabled={locked}
-                onClick={() => w.setPlaceType(w.placeType === p.id ? null : p.id)}
+                onClick={() => { w.setRemoveMode(false); w.setPlaceType(w.placeType === p.id ? null : p.id); }}
                 title={locked ? `${p.name} — 마을 Lv.${p.unlock} 해금` : `${p.name} · ${p.desc}`}
               >{locked ? '🔒' : p.icon}</button>
             );
