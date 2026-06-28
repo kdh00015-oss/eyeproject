@@ -2,7 +2,7 @@ import './App.css';
 import { useGame } from './hooks/useGame';
 import TopBar from './components/TopBar';
 import ResourcePanel from './components/ResourcePanel';
-import ActionPanel from './components/ActionPanel';
+import WorldMap from './components/world/WorldMap';
 import InfoPanel from './components/InfoPanel';
 import LogPanel from './components/LogPanel';
 
@@ -35,7 +35,7 @@ export default function App() {
 
       <div className="layout">
         <ResourcePanel state={state} derived={derived} />
-        <ActionPanel state={state} derived={derived} time={time} actions={actions} />
+        <WorldMap state={state} derived={derived} time={time} actions={actions} />
         <InfoPanel state={state} derived={derived} />
       </div>
 
