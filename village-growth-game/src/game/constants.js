@@ -101,20 +101,21 @@ export const VILLAGE_GRADES = [
 
 // --- 인근 마을 (탐험으로 발견 → 교역로 개설) ---
 export const VILLAGE_TEMPLATES = [
-  { id: 'v1', name: '바람골', distance: 2, tradeIncome: 8, influence: 6, openCost: 200 },
-  { id: 'v2', name: '은빛호수', distance: 3, tradeIncome: 14, influence: 10, openCost: 450 },
-  { id: 'v3', name: '붉은언덕', distance: 4, tradeIncome: 22, influence: 16, openCost: 800 },
-  { id: 'v4', name: '푸른항구', distance: 5, tradeIncome: 35, influence: 26, openCost: 1500 },
-  { id: 'v5', name: '황금평원', distance: 7, tradeIncome: 55, influence: 40, openCost: 3000 },
+  { id: 'v1', name: '바람골', distance: 2, tradeIncome: 5, influence: 6, openCost: 220 },
+  { id: 'v2', name: '은빛호수', distance: 3, tradeIncome: 9, influence: 10, openCost: 500 },
+  { id: 'v3', name: '붉은언덕', distance: 4, tradeIncome: 14, influence: 16, openCost: 900 },
+  { id: 'v4', name: '푸른항구', distance: 5, tradeIncome: 22, influence: 26, openCost: 1700 },
+  { id: 'v5', name: '황금평원', distance: 7, tradeIncome: 35, influence: 40, openCost: 3400 },
 ];
 
 // --- 핵심 수치 ---
-export const START_MONEY = 200;
+export const START_MONEY = 130;
 export const START_POP = 3;
 export const FARM_PLOTS_START = 18; // 시작 밭 칸 수 (6×3)
 export const FARM_PLOTS_MAX = 24; // 개간 최대 (6×4)
-export const FOOD_PER_POP = 0.4; // 주민 1명당 하루 식량 소비
-export const TAX_PER_POP = 3; // 주민 1명당 세금 기준액
+export const FOOD_PER_POP = 0.45; // 주민 1명당 하루 식량 소비
+export const TAX_PER_POP = 2; // 주민 1명당 세금 기준액
+export const SELL_COMMISSION = 0.88; // 시장 판매 수수료(판매가 × 0.88)
 export const DEFAULT_TAX = 10; // 기본 세율(%)
 export const BASE_FISH_PER_DAY = 3; // 하루 낚시 횟수 기본값
 export const RECLAIM_BASE_COST = 120; // 밭 개간 기본 비용

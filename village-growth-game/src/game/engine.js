@@ -10,6 +10,7 @@ import {
   VILLAGE_TEMPLATES,
   FOOD_PER_POP,
   TAX_PER_POP,
+  SELL_COMMISSION,
   MAX_LOG,
 } from './constants';
 import { BUILDINGS } from './buildings';
@@ -111,10 +112,10 @@ export function computeDerived(state) {
 }
 
 // 현재 판매 단가 (시장 가격 변동 × 판매 보너스)
-// 판매 압력 → 수요 계수 (많이 팔린 재화는 일시적으로 가격이 눌림, 최대 -45%)
+// 판매 압력 → 수요 계수 (많이 팔린 재화는 일시적으로 가격이 눌림, 최대 -60%)
 export function demandFactor(state, goodId) {
   const p = (state.pricePressure && state.pricePressure[goodId]) || 0;
-  return 1 - Math.min(0.45, p * 0.02);
+  return 1 - Math.min(0.6, p * 0.03);
 }
 
 export function sellPrice(state, goodId, derived) {
@@ -123,7 +124,8 @@ export function sellPrice(state, goodId, derived) {
   const cb = cbonus(state);
   // 상인: 모든 판매가 +6%, 어부: 생선 판매가 +10%
   const classMult = cb.sell * (FISH_GOODS.has(goodId) ? cb.fishSell : 1);
-  return Math.max(1, Math.round(base * d.sellMult * classMult * demandFactor(state, goodId)));
+  // 시장 수수료(SELL_COMMISSION) 적용 → 수입 난이도 ↑
+  return Math.max(1, Math.round(base * d.sellMult * classMult * demandFactor(state, goodId) * SELL_COMMISSION));
 }
 
 // 시장 구매가: 현재 시세에 25% 상점 마진. 상인 직업은 구매가 할인(cbonus.buy)
@@ -431,9 +433,9 @@ export function advanceDay(state) {
       pulled *= inSeason ? 0.95 : 1.12;
     }
     prices[g.id] = clamp(Math.round(pulled), Math.round(base * 0.55), Math.round(base * 1.6));
-    // 판매 압력은 매일 감쇠(수요 회복)
+    // 판매 압력은 매일 천천히 감쇠(수요 회복이 느림 → 대량 덤핑 비효율)
     if (pressure[g.id]) {
-      pressure[g.id] = pressure[g.id] * 0.6;
+      pressure[g.id] = pressure[g.id] * 0.74;
       if (pressure[g.id] < 0.5) delete pressure[g.id];
     }
   }
