@@ -7,9 +7,34 @@ import { fmt } from '../game/util';
 export default function InfoPanel({ state, derived }) {
   const nextRank = RANKS[state.rankIndex + 1];
 
+  const SAT = [
+    { k: 'food', name: '🍗 배고픔' },
+    { k: 'safety', name: '🛡️ 안전' },
+    { k: 'culture', name: '🎭 문화' },
+    { k: 'education', name: '📚 교육' },
+    { k: 'hygiene', name: '🚿 위생' },
+  ];
+
   return (
     <aside className="panel info-panel">
       <h2 className="panel-title">🏛️ 마을 정보</h2>
+
+      {/* 마을 레벨 + 주민 만족도 */}
+      <div className="info-block">
+        <h3 className="sub-title">마을 레벨 {state.villageLevel}</h3>
+        <ul className="sat-list">
+          {SAT.map((s) => {
+            const v = Math.round(state.satisfaction[s.k]);
+            return (
+              <li key={s.k} className="sat-row">
+                <span className="sat-name">{s.name}</span>
+                <span className="sat-bar"><span className="sat-fill" style={{ width: `${v}%`, background: v > 60 ? '#6dd36d' : v > 35 ? '#f4c542' : '#e0604a' }} /></span>
+                <span className="sat-val">{v}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       {/* 직위 진행 */}
       <div className="info-block">

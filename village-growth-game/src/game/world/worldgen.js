@@ -11,14 +11,30 @@ export const T = { GRASS: 0, GRASS2: 1, PATH: 2, WATER: 3, SAND: 4, SOIL: 5, FLO
 export const OBJ = { TREE: 'tree', ROCK: 'rock', BUSH: 'bush', FLOWER: 'flower', MUSHROOM: 'mushroom', LOG: 'log', GRASS: 'grasstuft' };
 export const SOFT_OBJ = new Set([OBJ.FLOWER, OBJ.MUSHROOM, OBJ.LOG, OBJ.GRASS]);
 
-// 배치 가능한 장식 건물
+// 건설 모드로 배치 가능한 건물/구조물
+//  cost: 골드/목재/돌 | effect: 마을에 주는 효과 | unlock: 필요한 마을 레벨
 export const PLACEABLES = {
-  house: { id: 'house', name: '집', icon: '🏠', wood: 8, stone: 4, solid: true },
-  well: { id: 'well', name: '우물', icon: '⛲', wood: 4, stone: 8, solid: true },
-  lamp: { id: 'lamp', name: '가로등', icon: '🏮', wood: 2, stone: 1, solid: false, light: true },
-  fence: { id: 'fence', name: '울타리', icon: '🪵', wood: 2, stone: 0, solid: true },
-  flowerpot: { id: 'flowerpot', name: '화단', icon: '🌷', wood: 1, stone: 0, solid: false },
+  house: { id: 'house', name: '집', icon: '🏠', cost: { gold: 30, wood: 8, stone: 4 }, solid: true, unlock: 1, effect: { maxPop: 4 }, desc: '최대 인구 +4' },
+  warehouse: { id: 'warehouse', name: '창고', icon: '🏚️', cost: { gold: 40, wood: 10, stone: 6 }, solid: true, unlock: 1, effect: { storage: 50, hygiene: 2 }, desc: '저장 +50' },
+  well: { id: 'well', name: '우물', icon: '⛲', cost: { gold: 20, wood: 4, stone: 8 }, solid: true, unlock: 1, effect: { hygiene: 8 }, desc: '위생 +8' },
+  flowerpot: { id: 'flowerpot', name: '화단', icon: '🌷', cost: { gold: 10, wood: 1, stone: 0 }, solid: false, unlock: 1, effect: { culture: 4 }, desc: '문화 +4' },
+  lamp: { id: 'lamp', name: '가로등', icon: '🏮', cost: { gold: 15, wood: 2, stone: 1 }, solid: false, light: true, unlock: 2, effect: { culture: 5, safety: 4 }, desc: '문화/안전 +, 야간 조명' },
+  fence: { id: 'fence', name: '울타리', icon: '🪵', cost: { gold: 5, wood: 2, stone: 0 }, solid: true, unlock: 1, effect: { safety: 1 }, desc: '안전 +1' },
+  school: { id: 'school', name: '학교', icon: '🏫', cost: { gold: 120, wood: 18, stone: 10 }, solid: true, unlock: 2, effect: { education: 18, culture: 4 }, desc: '교육 +18' },
+  hospital: { id: 'hospital', name: '병원', icon: '🏥', cost: { gold: 160, wood: 16, stone: 16 }, solid: true, unlock: 3, effect: { hygiene: 16, safety: 8 }, desc: '위생·안전 +' },
+  watchtower: { id: 'watchtower', name: '경비탑', icon: '🗼', cost: { gold: 100, wood: 14, stone: 12 }, solid: true, unlock: 3, effect: { safety: 18 }, desc: '안전 +18' },
 };
+
+// 배치물들의 효과 합산
+export function placedEffects(placed) {
+  const sum = { maxPop: 0, storage: 0, hygiene: 0, culture: 0, education: 0, safety: 0 };
+  for (const p of placed) {
+    const def = PLACEABLES[p.type];
+    if (!def || !def.effect) continue;
+    for (const k of Object.keys(sum)) sum[k] += def.effect[k] || 0;
+  }
+  return sum;
+}
 
 function mulberry32(seed) {
   return function () {

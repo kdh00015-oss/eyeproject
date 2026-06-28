@@ -22,7 +22,16 @@ import {
   JOBS, OUTPUT, levelFromXp, levelMult,
   WORK_FATIGUE, REST_RECOVER, REST_THRESHOLD, REST_BACK, UNPAID_PENALTY,
 } from './workers';
+import { placedEffects } from './world/worldgen';
 import { clamp, weightedPick } from './util';
+
+// 마을 레벨 임계 점수 (index = level-1)
+export const VILLAGE_LEVEL_SCORE = [0, 25, 60, 110, 180, 280, 400, 560];
+export function villageLevelFromScore(score) {
+  let l = 1;
+  for (let i = 0; i < VILLAGE_LEVEL_SCORE.length; i++) if (score >= VILLAGE_LEVEL_SCORE[i]) l = i + 1;
+  return l;
+}
 
 // ---- 시간/계절 ----
 export function seasonInfo(day) {
@@ -37,9 +46,16 @@ export function seasonInfo(day) {
 export function computeDerived(state) {
   const b = state.buildings;
   const r = state.research;
+  const fx = placedEffects(state.placed); // 배치 건물 효과
 
-  const maxPop = 5 + b.house * 4;
-  const storageCap = 100 + b.warehouse * 60;
+  const buildingLevelsRaw = Object.values(b).reduce((s, v) => s + v, 0);
+  const placedCount = state.placed.length;
+  // 마을 레벨 점수
+  const vScore = state.population + buildingLevelsRaw * 3 + placedCount * 2 + state.fame * 0.5 + state.influence * 0.3;
+  const villageLevel = villageLevelFromScore(vScore);
+
+  const maxPop = 5 + b.house * 4 + fx.maxPop + villageLevel * 2;
+  const storageCap = 100 + b.warehouse * 60 + fx.storage;
   const marketBonus = b.market * 0.06;
   const commerceBonus = r.commerce * 0.08;
   const sellMult = 1 + marketBonus + commerceBonus;
@@ -49,7 +65,7 @@ export function computeDerived(state) {
   const researchDiscount = b.lab * 0.05;
   const schoolHappiness = b.school * 4 + r.admin * 3;
 
-  const buildingLevels = Object.values(b).reduce((s, v) => s + v, 0);
+  const buildingLevels = buildingLevelsRaw;
   const researchTotal = Object.values(r).reduce((s, v) => s + v, 0);
   const trades = state.villages.filter((v) => v.tradeOpen).length;
 
@@ -78,6 +94,10 @@ export function computeDerived(state) {
     stored,
     score,
     grade,
+    villageLevel,
+    vScore,
+    placedFx: fx,
+    placedCount,
   };
 }
 
@@ -256,13 +276,25 @@ export function advanceDay(state) {
   }
   const foodShort = foodNeed > 0.01;
 
-  // 4) 행복도 갱신 (목표치로 서서히 이동)
-  let target = 55 + derived.schoolHappiness - state.taxRate;
-  if (foodShort) target -= 30;
+  // 4) 주민 만족도 세부지표 → 행복도
+  const fx = derived.placedFx;
+  const sTarget = {
+    food: foodShort ? 25 : 82,
+    safety: clamp(40 + derived.buildingLevels * 2 + derived.villageLevel * 4 + fx.safety, 0, 100),
+    culture: clamp(30 + fx.culture + state.buildings.market * 4 + derived.villageLevel * 2, 0, 100),
+    education: clamp(20 + state.buildings.school * 12 + fx.education + state.research.admin * 4, 0, 100),
+    hygiene: clamp(35 + fx.hygiene + state.buildings.warehouse * 2 + derived.villageLevel * 2, 0, 100),
+  };
+  const satisfaction = {};
+  for (const k of Object.keys(sTarget)) {
+    satisfaction[k] = clamp(state.satisfaction[k] + (sTarget[k] - state.satisfaction[k]) * 0.3, 0, 100);
+  }
+  next.satisfaction = satisfaction;
+  const overall = (satisfaction.food + satisfaction.safety + satisfaction.culture + satisfaction.education + satisfaction.hygiene) / 5;
+  let target = overall - state.taxRate;
   if (state.population > derived.maxPop) target -= 15; // 과밀
   target = clamp(target, 0, 100);
-  let happiness = state.happiness + (target - state.happiness) * 0.3;
-  happiness = clamp(happiness, 0, 100);
+  let happiness = clamp(state.happiness + (target - state.happiness) * 0.3, 0, 100);
   next.happiness = happiness;
   if (foodShort) {
     log = pushLog(log, day, '🍽️ 식량이 부족합니다! 주민 행복도가 떨어집니다.', 'warn');
@@ -329,8 +361,12 @@ export function advanceDay(state) {
     prices[g.id] = clamp(Math.round(pulled), Math.round(base * 0.6), Math.round(base * 1.5));
   }
 
-  // 9) 직위 자동 승급
+  // 9) 마을 레벨 + 직위 자동 승급
   const newDerived = computeDerived(next);
+  next.villageLevel = newDerived.villageLevel;
+  if (newDerived.villageLevel > state.villageLevel) {
+    log = pushLog(log, day, `🏘️ 마을 레벨 ${newDerived.villageLevel} 달성! 새 건물이 해금되고 수용 인구가 늘었습니다.`, 'good');
+  }
   const metrics = {
     population: next.population,
     money: next.money,

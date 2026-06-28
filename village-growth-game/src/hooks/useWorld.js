@@ -94,10 +94,9 @@ export function useWorld({ state, time, actions }) {
     if (cooldown.current > 0) return;
     const M = getMap();
     if (placeRef.current) {
-      const pdef = PLACEABLES[placeRef.current];
       const blocked = !M.isWalkable(tx, ty, removedSet(), placedSolid()) || M.buildingHitAt(tx, ty);
       if (blocked || M.terrainAt(tx, ty) === T.SOIL) return;
-      actions.place(placeRef.current, tx, ty, { wood: pdef.wood, stone: pdef.stone }, M.id);
+      actions.place(placeRef.current, tx, ty, M.id);
       cooldown.current = 0.2; return;
     }
     const b = M.buildingHitAt(tx, ty);
@@ -371,7 +370,15 @@ export function useWorld({ state, time, actions }) {
     if (placeRef.current) {
       const tx = Math.floor(p.x) + (p.facing === 'left' ? -1 : p.facing === 'right' ? 1 : 0);
       const ty = Math.floor(p.y) + (p.facing === 'up' ? -1 : p.facing === 'down' ? 1 : 0);
-      ctx.strokeStyle = 'rgba(255,255,120,0.9)'; ctx.lineWidth = 2;
+      const def = PLACEABLES[placeRef.current];
+      const c = def.cost || {};
+      const afford = st.money >= (c.gold || 0) && st.wood >= (c.wood || 0) && st.stone >= (c.stone || 0);
+      const unlocked = (st.villageLevel || 1) >= (def.unlock || 1);
+      const free = M.isWalkable(tx, ty, rm, placedSolid()) && !M.buildingHitAt(tx, ty) && M.terrainAt(tx, ty) !== T.SOIL;
+      const ok = afford && unlocked && free;
+      ctx.fillStyle = ok ? 'rgba(90,220,110,0.35)' : 'rgba(230,80,70,0.35)';
+      ctx.fillRect(tx * tileSize - camX, ty * tileSize - camY, tileSize, tileSize);
+      ctx.strokeStyle = ok ? 'rgba(120,255,140,0.95)' : 'rgba(255,90,80,0.95)'; ctx.lineWidth = 2;
       ctx.strokeRect(tx * tileSize - camX, ty * tileSize - camY, tileSize, tileSize);
     }
 
