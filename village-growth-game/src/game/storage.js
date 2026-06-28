@@ -28,7 +28,8 @@ export function loadGame() {
       livestock: { ...base.livestock, ...data.livestock },
       inventory: { ...base.inventory, ...data.inventory },
       prices: { ...base.prices, ...data.prices },
-      workers: { ...base.workers, ...data.workers },
+      workers: Array.isArray(data.workers) ? data.workers : base.workers,
+      nextWorkerId: data.nextWorkerId || base.nextWorkerId,
     };
   } catch {
     return null;

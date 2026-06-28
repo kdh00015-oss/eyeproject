@@ -1,11 +1,11 @@
-// 고용소 탭: 일꾼 고용/해고 (자동 노동 + 급여/식량/주거 관리)
+// 고용소 탭: 일꾼 고용 + 개별 일꾼(이름/숙련도/행복도/휴식) 관리
 
-import { JOB_LIST } from '../../game/workers';
+import { JOB_LIST, JOBS, levelFromXp, MAX_WORKER_LEVEL } from '../../game/workers';
 
 export default function WorkersPanel({ state, derived, actions }) {
-  const totalWorkers = Object.values(state.workers).reduce((s, v) => s + v, 0);
-  const used = Math.floor(state.population) + totalWorkers;
-  const wageTotal = JOB_LIST.reduce((s, j) => s + state.workers[j.id] * j.wage, 0);
+  const workers = state.workers;
+  const used = Math.floor(state.population) + workers.length;
+  const wageTotal = workers.reduce((s, w) => s + JOBS[w.job].wage, 0);
   const housingFull = used >= derived.maxPop;
 
   return (
@@ -13,37 +13,63 @@ export default function WorkersPanel({ state, derived, actions }) {
       <div className="worker-summary">
         <span className="hud-chip">🏠 주거 {used}/{derived.maxPop}</span>
         <span className="hud-chip">💸 일급 합계 {wageTotal}G/일</span>
-        <span className="hud-chip">👷 일꾼 {totalWorkers}명</span>
+        <span className="hud-chip">👷 일꾼 {workers.length}명</span>
       </div>
       <p className="hint">
-        일꾼은 매일 자동으로 일합니다(급여·식량 소비, 주거 필요). 연구 레벨이 오르면 효율이 증가합니다.
+        일꾼은 매일 자동으로 일하며 <b>숙련도</b>가 오릅니다(효율 ↑). 일하면 <b>행복도</b>가 줄고,
+        지치면 스스로 <b>휴식</b>합니다. 급여를 못 주면 떠납니다.
         {housingFull && ' ⚠️ 주거가 가득 찼습니다 — 집(🏠)을 더 지으세요.'}
       </p>
 
-      <div className="worker-list">
+      {/* 고용 버튼 */}
+      <h3 className="sub-title">고용하기</h3>
+      <div className="hire-row">
         {JOB_LIST.map((j) => {
-          const count = state.workers[j.id];
           const canHire = state.money >= j.hire && !housingFull;
           return (
-            <div key={j.id} className="worker-card">
-              <div className="worker-head">
-                <span className="worker-name">{j.icon} {j.name}</span>
-                <span className="worker-count">{count}명</span>
-              </div>
-              <small className="worker-desc">{j.desc}</small>
-              <small className="worker-cost">고용비 {j.hire}G · 일급 {j.wage}G · 식량 {j.food}/일</small>
-              <div className="worker-actions">
-                <button className="btn-sm buy" disabled={!canHire} onClick={() => actions.hire(j.id)}>
-                  고용 ({j.hire}G)
-                </button>
-                <button className="btn-sm sell" disabled={count <= 0} onClick={() => actions.fire(j.id)}>
-                  해고
-                </button>
-              </div>
-            </div>
+            <button key={j.id} className="hire-btn" disabled={!canHire} onClick={() => actions.hire(j.id)}
+              title={`${j.desc} · 일급 ${j.wage}G`}>
+              <span className="hire-icon">{j.icon}</span>
+              <span className="hire-name">{j.name}</span>
+              <span className="hire-cost">{j.hire}G</span>
+            </button>
           );
         })}
       </div>
+
+      {/* 고용된 일꾼 목록 */}
+      <h3 className="sub-title">우리 마을 일꾼 ({workers.length})</h3>
+      {workers.length === 0 ? (
+        <p className="empty">아직 고용한 일꾼이 없습니다.</p>
+      ) : (
+        <div className="worker-list">
+          {workers.map((w) => {
+            const job = JOBS[w.job];
+            const lvl = levelFromXp(w.xp);
+            return (
+              <div key={w.id} className="worker-card">
+                <div className="worker-head">
+                  <span className="worker-name">{job.icon} {w.name}</span>
+                  <span className="worker-count">{job.name}</span>
+                </div>
+                <div className="worker-stars">
+                  {Array.from({ length: MAX_WORKER_LEVEL }).map((_, i) => (
+                    <span key={i} className={i < lvl ? 'star on' : 'star'}>★</span>
+                  ))}
+                  <span className="worker-status">{w.resting ? '😴 휴식 중' : '🛠️ 일하는 중'}</span>
+                </div>
+                <div className="happy-bar">
+                  <div className="happy-fill" style={{
+                    width: `${w.happiness}%`,
+                    background: w.happiness > 60 ? '#6dd36d' : w.happiness > 30 ? '#f4c542' : '#e0604a',
+                  }} />
+                </div>
+                <button className="btn-sm sell" onClick={() => actions.fireWorker(w.id)}>해고</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

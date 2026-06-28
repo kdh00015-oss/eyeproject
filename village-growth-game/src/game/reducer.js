@@ -12,7 +12,7 @@ import { FISHING_SPOTS } from './fishing';
 import { ANIMALS } from './livestock';
 import { BUILDINGS, buildingCost } from './buildings';
 import { RESEARCH_FIELDS, researchCost, MAX_RESEARCH_LEVEL } from './research';
-import { JOBS } from './workers';
+import { JOBS, randomName } from './workers';
 import { WEATHERS } from './constants';
 import {
   FARM_PLOTS_MAX,
@@ -329,27 +329,29 @@ export function gameReducer(state, action) {
     case 'HIRE': {
       const job = JOBS[action.job];
       const derived = computeDerived(state);
-      const totalW = Object.values(state.workers).reduce((s, v) => s + v, 0);
-      if (Math.floor(state.population) + totalW + 1 > derived.maxPop) {
+      if (Math.floor(state.population) + state.workers.length + 1 > derived.maxPop) {
         return { ...state, log: log(state, '주거 공간이 부족합니다. 집을 더 지으세요.', 'warn') };
       }
       if (state.money < job.hire) {
         return { ...state, log: log(state, `고용비(${job.hire}골드)가 부족합니다.`, 'warn') };
       }
+      const name = randomName(state.workers.map((w) => w.name));
+      const worker = { id: state.nextWorkerId, name, job: job.id, xp: 0, happiness: 80, resting: false };
       return {
         ...state,
         money: state.money - job.hire,
-        workers: { ...state.workers, [job.id]: state.workers[job.id] + 1 },
-        log: log(state, `${job.icon} ${job.name}을(를) 고용했습니다.`, 'good'),
+        workers: [...state.workers, worker],
+        nextWorkerId: state.nextWorkerId + 1,
+        log: log(state, `${job.icon} ${job.name} '${name}'을(를) 고용했습니다.`, 'good'),
       };
     }
-    case 'FIRE': {
-      const job = JOBS[action.job];
-      if (state.workers[job.id] <= 0) return state;
+    case 'FIRE_WORKER': {
+      const w = state.workers.find((x) => x.id === action.id);
+      if (!w) return state;
       return {
         ...state,
-        workers: { ...state.workers, [job.id]: state.workers[job.id] - 1 },
-        log: log(state, `${job.name}을(를) 해고했습니다.`, 'info'),
+        workers: state.workers.filter((x) => x.id !== action.id),
+        log: log(state, `${JOBS[w.job].name} '${w.name}'을(를) 해고했습니다.`, 'info'),
       };
     }
 

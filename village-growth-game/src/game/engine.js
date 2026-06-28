@@ -18,7 +18,10 @@ import { GOODS, EDIBLE_IDS } from './goods';
 import { RESEARCH_FIELDS } from './research';
 import { CROPS } from './crops';
 import { FISHING_SPOTS } from './fishing';
-import { JOBS, OUTPUT } from './workers';
+import {
+  JOBS, OUTPUT, levelFromXp, levelMult,
+  WORK_FATIGUE, REST_RECOVER, REST_THRESHOLD, REST_BACK, UNPAID_PENALTY,
+} from './workers';
 import { clamp, weightedPick } from './util';
 
 // ---- 시간/계절 ----
@@ -127,11 +130,13 @@ export function advanceDay(state) {
     log = pushLog(log, day, '🏜️ 가뭄으로 작물 상태가 좋지 않습니다.', 'warn');
   }
 
-  // 2) 축산: 사료 소비 + 생산 (목축업자 일꾼이 생산량 증대)
+  // 2) 축산: 사료 소비 + 생산 (목축업자 일꾼이 생산량 증대, 숙련도 반영)
   let feed = state.feed;
-  const ranchers = state.workers.rancher || 0;
-  const livestockBonus =
-    (1 + state.research.livestock * 0.1) * (1 + ranchers * OUTPUT.rancherBonus);
+  let rancherFactor = 1;
+  for (const w of state.workers)
+    if (w.job === 'rancher' && !w.resting)
+      rancherFactor += OUTPUT.rancherBonus * levelMult(levelFromXp(w.xp));
+  const livestockBonus = (1 + state.research.livestock * 0.1) * rancherFactor;
   let feedShort = false;
   for (const [id, animal] of Object.entries(ANIMALS)) {
     const cell = state.livestock[id];
@@ -158,40 +163,64 @@ export function advanceDay(state) {
     log = pushLog(log, day, '🌿 사료가 부족해 일부 가축이 굶고 있습니다.', 'warn');
   }
 
-  // 2.5) 일꾼 자동 노동 (자동 생산 + 연구 효율)
-  const workers = state.workers;
-  const totalWorkers = Object.values(workers).reduce((s, v) => s + v, 0);
+  // 2.5) 일꾼 자동 노동 (개별 숙련도/행복도/휴식 + 자동 생산 + 연구 효율)
+  const totalWorkers = state.workers.length;
   const weather = WEATHERS[pick.id];
-  wagesTotal = Object.entries(workers).reduce((s, [id, n]) => s + n * JOBS[id].wage, 0);
-
   const laborEff = 1 + state.research.admin * 0.05; // 행정 연구 → 노동 효율
-  if (workers.lumberjack > 0)
-    next.wood = (next.wood || 0) + Math.round(workers.lumberjack * OUTPUT.lumberjackWood * laborEff);
-  if (workers.miner > 0)
-    next.stone = (next.stone || 0) + Math.round(workers.miner * OUTPUT.minerStone * laborEff);
-  if (workers.fisher > 0) {
-    const table = FISHING_SPOTS.lake.fish;
-    const catches = workers.fisher * (OUTPUT.fisherCatch + Math.floor(state.research.fishing / 2));
-    for (let i = 0; i < catches; i++) {
-      const f = weightedPick(table);
-      next.inventory[f.id] = (next.inventory[f.id] || 0) + 1;
+  let woodGain = 0, stoneGain = 0, farmerCap = 0;
+  const fishCatch = [];
+  const nextWorkers = [];
+  for (const w of state.workers) {
+    wagesTotal += JOBS[w.job].wage;
+    const nw = { ...w };
+    if (nw.resting) {
+      // 휴식: 생산 없음, 행복도 회복
+      nw.happiness = Math.min(100, nw.happiness + REST_RECOVER);
+      if (nw.happiness >= REST_BACK) nw.resting = false;
+    } else {
+      const mult = levelMult(levelFromXp(nw.xp));
+      if (w.job === 'lumberjack') woodGain += OUTPUT.lumberjackWood * mult * laborEff;
+      else if (w.job === 'miner') stoneGain += OUTPUT.minerStone * mult * laborEff;
+      else if (w.job === 'fisher') {
+        const c = Math.round((OUTPUT.fisherCatch + Math.floor(state.research.fishing / 2)) * mult);
+        for (let i = 0; i < c; i++) fishCatch.push(1);
+      } else if (w.job === 'farmer') farmerCap += OUTPUT.farmerPlots * mult;
+      // 숙련도 상승 + 피로
+      const before = levelFromXp(nw.xp);
+      nw.xp = nw.xp + 10;
+      if (levelFromXp(nw.xp) > before)
+        log = pushLog(log, day, `⭐ ${nw.name}의 숙련도가 Lv.${levelFromXp(nw.xp)}로 올랐습니다.`, 'good');
+      nw.happiness = Math.max(0, nw.happiness - WORK_FATIGUE);
+      if (nw.happiness <= REST_THRESHOLD) {
+        nw.resting = true;
+        log = pushLog(log, day, `😴 ${nw.name}이(가) 지쳐 휴식에 들어갑니다.`, 'info');
+      }
     }
+    nextWorkers.push(nw);
   }
-  if (workers.farmer > 0) {
+  next.workers = nextWorkers;
+
+  if (woodGain > 0) next.wood = (next.wood || 0) + Math.round(woodGain);
+  if (stoneGain > 0) next.stone = (next.stone || 0) + Math.round(stoneGain);
+  for (let i = 0; i < fishCatch.length; i++) {
+    const f = weightedPick(FISHING_SPOTS.lake.fish);
+    next.inventory[f.id] = (next.inventory[f.id] || 0) + 1;
+  }
+  const farmCapInt = Math.floor(farmerCap);
+  if (farmCapInt > 0) {
     const farm = state.farm.slice();
     const agri = 1 + state.research.agriculture * 0.1;
-    let cap = workers.farmer * OUTPUT.farmerPlots;
+    let cap = farmCapInt;
     let harvested = 0;
     for (let i = 0; i < farm.length && cap > 0; i++) {
       const plot = farm[i];
       if (!plot) continue;
       const crop = CROPS[plot.cropId];
-      if (day - plot.plantedDay < crop.growthDays) continue; // 아직 미성숙
+      if (day - plot.plantedDay < crop.growthDays) continue;
       const qty = Math.max(1, Math.round(crop.yield * weather.crop * agri));
       next.inventory[crop.id] = (next.inventory[crop.id] || 0) + qty;
       harvested += 1;
       cap -= 1;
-      // 같은 계절이고 씨앗값이 감당되면 재파종
       if (crop.seasons.includes(season.id) && state.money - workerSeedSpend >= crop.seedCost) {
         farm[i] = { cropId: plot.cropId, plantedDay: day };
         workerSeedSpend += crop.seedCost;
@@ -201,7 +230,7 @@ export function advanceDay(state) {
     }
     next.farm = farm;
     if (harvested > 0)
-      log = pushLog(log, day, `🧑‍🌾 농부가 밭 ${harvested}칸을 자동 수확했습니다.`, 'good');
+      log = pushLog(log, day, `🧑‍🌾 농부들이 밭 ${harvested}칸을 자동 수확했습니다.`, 'good');
   }
 
   // 3) 주민·일꾼 식량 소비 (인벤토리의 식용 재화에서 차감)
@@ -267,16 +296,22 @@ export function advanceDay(state) {
     influenceGain += tpl.influence * 0.05;
   }
 
-  // 일꾼 급여/씨앗 정산 — 못 주면 일꾼이 이탈
+  // 일꾼 급여/씨앗 정산 — 못 주면 행복도 하락 + 이탈
   const gross = state.money + tax + tradeIncome;
   const owed = wagesTotal + workerSeedSpend;
   next.money = Math.max(0, gross - owed);
   if (owed > gross && totalWorkers > 0) {
-    const w2 = { ...workers };
-    const cut = Object.keys(w2).filter((k) => w2[k] > 0).sort((a, b) => w2[b] - w2[a])[0];
-    if (cut) w2[cut] -= 1;
-    next.workers = w2;
-    log = pushLog(log, day, '💸 급여를 주지 못해 일꾼이 마을을 떠났습니다!', 'warn');
+    next.workers = next.workers.map((w) => ({
+      ...w,
+      happiness: Math.max(0, w.happiness - UNPAID_PENALTY),
+    }));
+    log = pushLog(log, day, '💸 급여가 밀려 일꾼들의 불만이 커집니다.', 'warn');
+  }
+  // 행복도가 0이 된 일꾼은 마을을 떠남
+  const quitters = next.workers.filter((w) => w.happiness <= 0);
+  if (quitters.length > 0) {
+    next.workers = next.workers.filter((w) => w.happiness > 0);
+    log = pushLog(log, day, `🚪 불만이 쌓인 일꾼 ${quitters.length}명이 떠났습니다.`, 'warn');
   }
   next.influence = state.influence + influenceGain;
 

@@ -137,22 +137,18 @@ export function useWorld({ state, time, actions }) {
   }, [interactFront]);
 
   // 고용한 일꾼을 맵 위 NPC로 표현 (최대 12명 렌더)
-  const workersKey = JSON.stringify(state.workers);
+  const workersKey = state.workers.map((w) => w.id + w.job).join(',');
   useEffect(() => {
     const arr = [];
-    let total = 0;
-    for (const job of Object.keys(state.workers)) {
-      const n = state.workers[job];
-      const site = JOB_SITE[JOBS[job].site];
-      for (let i = 0; i < n && total < 12; i++, total++) {
-        const ox = (total % 3) - 1, oy = Math.floor(total / 3) % 2;
-        const cx = site.x + ox, cy = site.y + oy;
-        arr.push({
-          color: JOBS[job].color, x: cx + 0.5, y: cy + 0.5, wp: 0, wait: i * 0.3,
-          path: [[cx, cy], [cx + 1, cy], [cx + 1, cy + 1], [cx, cy + 1]],
-        });
-      }
-    }
+    state.workers.slice(0, 14).forEach((w, total) => {
+      const site = JOB_SITE[JOBS[w.job].site];
+      const ox = (total % 3) - 1, oy = Math.floor(total / 3) % 2;
+      const cx = site.x + ox, cy = site.y + oy;
+      arr.push({
+        color: JOBS[w.job].color, x: cx + 0.5, y: cy + 0.5, wp: 0, wait: total * 0.3,
+        path: [[cx, cy], [cx + 1, cy], [cx + 1, cy + 1], [cx, cy + 1]],
+      });
+    });
     workerNpcs.current = arr;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workersKey]);

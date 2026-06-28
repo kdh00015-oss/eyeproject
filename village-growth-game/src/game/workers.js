@@ -35,6 +35,37 @@ export const OUTPUT = {
   rancherBonus: 0.15, // 목축업자 1인당 축산물 +15%
 };
 
+// --- 숙련도(레벨) ---
+export const MAX_WORKER_LEVEL = 5;
+export const XP_THRESHOLDS = [0, 100, 250, 450, 700]; // index = level-1
+export function levelFromXp(xp) {
+  let lvl = 1;
+  for (let i = 0; i < XP_THRESHOLDS.length; i++) if (xp >= XP_THRESHOLDS[i]) lvl = i + 1;
+  return lvl;
+}
+export function levelMult(level) {
+  return 1 + (level - 1) * 0.15; // 레벨당 +15% 효율
+}
+
+// --- 행복도/휴식 ---
+export const WORK_FATIGUE = 6; // 하루 노동 시 행복도 감소
+export const REST_RECOVER = 25; // 휴식 시 회복
+export const REST_THRESHOLD = 25; // 이 이하로 떨어지면 휴식 진입
+export const REST_BACK = 80; // 이 이상 회복되면 복귀
+export const UNPAID_PENALTY = 30; // 급여 체불 시 행복도 하락
+
+// 일꾼 이름 풀
+export const WORKER_NAMES = [
+  '민준', '서연', '도윤', '지우', '하준', '서윤', '예준', '지호', '수아', '지안',
+  '은우', '유준', '채원', '시우', '윤서', '지민', '하은', '준우', '수빈', '다은',
+  '건우', '서아', '주원', '지율', '연우', '소율', '재이', '나윤', '현우', '아인',
+];
+export function randomName(used) {
+  const pool = WORKER_NAMES.filter((n) => !used.includes(n));
+  const list = pool.length ? pool : WORKER_NAMES;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 // 맵에서 일꾼 NPC가 일하는 위치(중심 타일)
 export const JOB_SITE = {
   farm: { x: 6, y: 21 },
