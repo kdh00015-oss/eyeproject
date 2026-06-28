@@ -212,3 +212,12 @@ function buildWild() {
 }
 
 export const MAPS = { village: buildVillage(), wild: buildWild() };
+
+// 전체(월드) 지도용 메타데이터 — 각 지역의 이름/아이콘/설명 + 연결 관계
+export const MAP_META = {
+  village: { id: 'village', name: '마을', icon: '🏡', desc: '건물·농장·상점이 있는 생활 거점', dir: '서쪽' },
+  wild: { id: 'wild', name: '들판 · 숲', icon: '🌲', desc: '나무·광물·강이 풍부한 채집/탐험지', dir: '동쪽' },
+};
+// 지역 간 연결 (좌→우 배치 순서이기도 함)
+export const MAP_ORDER = ['village', 'wild'];
+export const MAP_LINKS = [['village', 'wild']];

@@ -22,6 +22,8 @@ import QuestWindow from './windows/QuestWindow';
 import HuntWindow from './windows/HuntWindow';
 import MilitaryWindow from './windows/MilitaryWindow';
 import SaveSlots from './windows/SaveSlots';
+import ClassSelect from './windows/ClassSelect';
+import WorldMap from './windows/WorldMap';
 
 const PANELS = {
   fishing: FishingPanel, livestock: LivestockPanel, build: BuildPanel,
@@ -40,6 +42,10 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
   const [rightOpen, setRightOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [win, setWin] = useState(null); // 'inv' | 'craft' | 'quest' | 'slots'
+  const [classSkipped, setClassSkipped] = useState(false); // 이번 세션 직업선택 건너뜀
+  const [worldOpen, setWorldOpen] = useState(false); // 전체 지도 오버레이
+  // 새 게임(1일차 + 직업 미선택)일 때만 직업 선택 표시 — 기존 세이브는 영향 없음
+  const showClassSelect = !classSkipped && state.day === 1 && (state.class == null || state.class === 'none');
 
   // 단축키로 창 열기 (이동키와 충돌 없음)
   useEffect(() => {
@@ -62,7 +68,7 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
     quest: { title: '퀘스트', icon: '📜', el: <QuestWindow state={state} derived={derived} actions={actions} /> },
     hunt: { title: '사냥', icon: '⚔️', el: <HuntWindow state={state} actions={actions} /> },
     war: { title: '군사·전쟁', icon: '🏰', el: <MilitaryWindow state={state} actions={actions} /> },
-    slots: { title: '세이브 슬롯', icon: '💾', el: <SaveSlots current={slot} slotTick={slotTick} onSave={saveToSlot} onLoad={loadFromSlot} onNew={newGameInSlot} /> },
+    slots: { title: '세이브 슬롯', icon: '💾', el: <SaveSlots current={slot} slotTick={slotTick} onSave={saveToSlot} onLoad={loadFromSlot} onNew={(i, cls) => { newGameInSlot(i, cls); setClassSkipped(false); }} /> },
   };
 
   // 최신 진행 로그를 토스트로 표시
@@ -118,7 +124,8 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
           ))}
           <button className="mini-btn" onClick={() => w.setZoom((z) => Math.min(2.6, z + 0.2))}>➕</button>
           <button className="mini-btn" onClick={() => w.setZoom((z) => Math.max(0.8, z - 0.2))}>➖</button>
-          <button className={'mini-btn' + (w.showMap ? ' on' : '')} onClick={() => w.setShowMap((v) => !v)}>🗺️</button>
+          <button className={'mini-btn' + (w.showMap ? ' on' : '')} onClick={() => w.setShowMap((v) => !v)} title="현재 맵 미니맵 (M)">🗺️</button>
+          <button className={'mini-btn' + (worldOpen ? ' on' : '')} onClick={() => setWorldOpen((v) => !v)} title="전체 지도 · 빠른 이동">🌐</button>
           <button className={'mini-btn' + (win === 'inv' ? ' on' : '')} onClick={() => setWin((v) => v === 'inv' ? null : 'inv')}>🎒</button>
           <button className={'mini-btn' + (win === 'craft' ? ' on' : '')} onClick={() => setWin((v) => v === 'craft' ? null : 'craft')}>⚒️</button>
           <button className={'mini-btn' + (win === 'quest' ? ' on' : '')} onClick={() => setWin((v) => v === 'quest' ? null : 'quest')}>📜</button>
@@ -234,6 +241,19 @@ export default function GameCanvas({ state, derived, time, actions, onSave, slot
         <Modal title={WINDOWS[win].title} icon={WINDOWS[win].icon} onClose={() => setWin(null)}>
           {WINDOWS[win].el}
         </Modal>
+      )}
+
+      {/* 전체 지도 (빠른 이동) */}
+      {worldOpen && (
+        <WorldMap current={w.mapId} onTravel={w.travelTo} onClose={() => setWorldOpen(false)} />
+      )}
+
+      {/* 시작 직업 선택 */}
+      {showClassSelect && (
+        <ClassSelect
+          onPick={(cls) => { actions.newGame(cls); setClassSkipped(true); }}
+          onSkip={() => setClassSkipped(true)}
+        />
       )}
 
       {/* NPC 대화/거래 */}
