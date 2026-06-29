@@ -17,7 +17,20 @@ export const RECIPES = [
   { id: 'leatherGloves', out: { id: 'leatherGloves', qty: 1 }, inputs: [{ id: 'hide', qty: 2 }], station: 'forge', desc: '가죽 2 → 가죽 장갑' },
   { id: 'leatherBoots', out: { id: 'leatherBoots', qty: 1 }, inputs: [{ id: 'hide', qty: 2 }], station: 'forge', desc: '가죽 2 → 가죽 신발' },
   { id: 'ironHelm', out: { id: 'ironHelm', qty: 1 }, inputs: [{ id: 'oreIron', qty: 3 }], station: 'forge', desc: '철광석 3 → 철 투구' },
+  { id: 'ironGauntlet', out: { id: 'ironGauntlet', qty: 1 }, inputs: [{ id: 'oreIron', qty: 2 }, { id: 'hide', qty: 1 }], station: 'forge', desc: '철광석 2 + 가죽 1 → 철 건틀릿' },
+  { id: 'ironBoots', out: { id: 'ironBoots', qty: 1 }, inputs: [{ id: 'oreIron', qty: 2 }, { id: 'hide', qty: 1 }], station: 'forge', desc: '철광석 2 + 가죽 1 → 철 장화' },
   { id: 'copperRing', out: { id: 'copperRing', qty: 1 }, inputs: [{ id: 'oreIron', qty: 2 }], station: 'forge', desc: '철광석 2 → 구리 반지' },
+  // 고급 제련/장비 (강철→미스릴→용린)
+  { id: 'steel', out: { id: 'steel', qty: 1 }, inputs: [{ id: 'oreIron', qty: 3 }], station: 'forge', desc: '철광석 3 → 강철 주괴' },
+  { id: 'steelSword', out: { id: 'steelSword', qty: 1 }, inputs: [{ id: 'steel', qty: 2 }, { id: 'plank', qty: 1 }], station: 'forge', desc: '강철 2 + 판자 1 → 강철검' },
+  { id: 'plateArmor', out: { id: 'plateArmor', qty: 1 }, inputs: [{ id: 'steel', qty: 4 }, { id: 'hide', qty: 2 }], station: 'forge', desc: '강철 4 + 가죽 2 → 판금 갑옷' },
+  { id: 'knightBlade', out: { id: 'knightBlade', qty: 1 }, inputs: [{ id: 'steel', qty: 3 }, { id: 'crystal', qty: 1 }], station: 'forge', desc: '강철 3 + 마력 수정 1 → 기사검' },
+  { id: 'goldRing', out: { id: 'goldRing', qty: 1 }, inputs: [{ id: 'oreIron', qty: 4 }, { id: 'crystal', qty: 1 }], station: 'forge', desc: '철광석 4 + 수정 1 → 황금 반지' },
+  { id: 'rubyAmulet', out: { id: 'rubyAmulet', qty: 1 }, inputs: [{ id: 'crystal', qty: 3 }, { id: 'hide', qty: 2 }], station: 'forge', desc: '수정 3 + 가죽 2 → 루비 목걸이' },
+  { id: 'mythrilBlade', out: { id: 'mythrilBlade', qty: 1 }, inputs: [{ id: 'mythril', qty: 3 }, { id: 'steel', qty: 2 }, { id: 'crystal', qty: 1 }], station: 'forge', desc: '미스릴 3 + 강철 2 + 수정 1 → 미스릴 검' },
+  { id: 'mythrilArmor', out: { id: 'mythrilArmor', qty: 1 }, inputs: [{ id: 'mythril', qty: 4 }, { id: 'steel', qty: 2 }, { id: 'crystal', qty: 1 }], station: 'forge', desc: '미스릴 4 + 강철 2 + 수정 1 → 미스릴 갑옷' },
+  { id: 'dragonFang', out: { id: 'dragonFang', qty: 1 }, inputs: [{ id: 'dragonScale', qty: 2 }, { id: 'mythril', qty: 3 }, { id: 'crystal', qty: 3 }], station: 'forge', desc: '용 비늘 2 + 미스릴 3 + 수정 3 → 용아도' },
+  { id: 'dragonPlate', out: { id: 'dragonPlate', qty: 1 }, inputs: [{ id: 'dragonScale', qty: 4 }, { id: 'steel', qty: 3 }, { id: 'crystal', qty: 2 }], station: 'forge', desc: '용 비늘 4 + 강철 3 + 수정 2 → 용린 갑옷' },
   // 요리
   { id: 'potion', out: { id: 'potion', qty: 1 }, inputs: [{ id: 'strawberry', qty: 2 }, { id: 'milk', qty: 1 }], station: 'cook', desc: '딸기 2 + 우유 1 → 치유 물약' },
   // --- 가공 체인 (제분/제과/양조/요리 확장) ---

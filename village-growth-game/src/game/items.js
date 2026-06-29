@@ -52,10 +52,15 @@ function gear(id, name, icon, slot, rarity, stats, dur, desc) {
 }
 gear('woodenSword', '나무검', '🗡️', 'weapon', 'common', { atk: 6 }, 40, '낡은 나무검. 공격력 +6');
 gear('ironSword', '철검', '⚔️', 'weapon', 'uncommon', { atk: 14 }, 60, '단단한 철검. 공격력 +14');
+gear('steelSword', '강철검', '🗡️', 'weapon', 'rare', { atk: 19, hp: 6 }, 80, '잘 벼린 강철검. 공격력 +19, 체력 +6');
 gear('knightBlade', '기사검', '🗡️', 'weapon', 'rare', { atk: 24, hp: 10 }, 90, '기사의 명검. 공격력 +24');
+gear('mythrilBlade', '미스릴 검', '⚔️', 'weapon', 'epic', { atk: 34, hp: 16 }, 120, '미스릴로 벼린 명검. 공격력 +34, 체력 +16');
+gear('dragonFang', '용아도', '🔱', 'weapon', 'legendary', { atk: 48, def: 6, hp: 24 }, 150, '용의 이빨로 만든 전설의 검. 공격 +48, 방어 +6, 체력 +24');
 gear('clothArmor', '천 갑옷', '🧥', 'armor', 'common', { def: 3, hp: 10 }, 40, '방어력 +3, 체력 +10');
 gear('leatherArmor', '가죽 갑옷', '🦺', 'armor', 'uncommon', { def: 6, hp: 20 }, 60, '방어력 +6, 체력 +20');
 gear('plateArmor', '판금 갑옷', '🛡️', 'armor', 'rare', { def: 14, hp: 40 }, 100, '방어력 +14, 체력 +40');
+gear('mythrilArmor', '미스릴 갑옷', '🛡️', 'armor', 'epic', { def: 22, hp: 60 }, 130, '가볍고 단단한 미스릴 갑옷. 방어 +22, 체력 +60');
+gear('dragonPlate', '용린 갑옷', '🐲', 'armor', 'legendary', { def: 32, hp: 100 }, 160, '용 비늘로 만든 전설의 갑옷. 방어 +32, 체력 +100');
 gear('leatherCap', '가죽 투구', '🪖', 'helmet', 'common', { def: 2 }, 40, '방어력 +2');
 gear('ironHelm', '철 투구', '⛑️', 'helmet', 'uncommon', { def: 5, hp: 8 }, 60, '방어력 +5');
 gear('leatherGloves', '가죽 장갑', '🧤', 'gloves', 'common', { def: 1, atk: 1 }, 40, '공/방 +1');
@@ -72,6 +77,9 @@ add({ id: 'hide', name: '가죽', icon: '🟫', rarity: 'common', category: 'mat
 add({ id: 'bone', name: '뼈', icon: '🦴', rarity: 'common', category: 'material', desc: '단단한 뼈. 무기 제작 재료.' });
 add({ id: 'oreIron', name: '철광석', icon: '🪨', rarity: 'uncommon', category: 'material', desc: '제련하면 무기·방어구가 됩니다.' });
 add({ id: 'crystal', name: '마력 수정', icon: '🔮', rarity: 'rare', category: 'material', desc: '장비 강화에 쓰이는 신비한 수정.' });
+add({ id: 'steel', name: '강철 주괴', icon: '⬛', rarity: 'uncommon', category: 'material', desc: '철광석을 제련한 강철. 고급 장비 제작 재료.' });
+add({ id: 'mythril', name: '미스릴', icon: '🔷', rarity: 'epic', category: 'material', desc: '깊은 곳에서만 나는 희귀 금속. 최고급 장비 재료.' });
+add({ id: 'dragonScale', name: '용 비늘', icon: '🐉', rarity: 'legendary', category: 'material', desc: '강력한 용에게서 얻은 비늘. 전설 장비 재료.' });
 
 // 소비품
 add({ id: 'bread', name: '빵', icon: '🍞', rarity: 'common', category: 'consumable', desc: '갓 구운 빵. 사용하면 주민 행복도가 +6 오릅니다.', effect: { happiness: 6 } });

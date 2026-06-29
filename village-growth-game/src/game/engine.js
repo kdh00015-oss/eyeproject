@@ -65,7 +65,7 @@ export function computeDerived(state) {
   const vScore = state.population + buildingLevelsRaw * 3 + placedCount * 2 + state.fame * 0.5 + state.influence * 0.3;
   const villageLevel = villageLevelFromScore(vScore);
 
-  const maxPop = 5 + b.house * 4 + fx.maxPop + villageLevel * 2;
+  const maxPop = 8 + b.house * 7 + fx.maxPop + villageLevel * 4;
   const storageCap = 100 + b.warehouse * 60 + fx.storage;
   const marketBonus = b.market * 0.06;
   const commerceBonus = r.commerce * 0.08;
@@ -377,8 +377,9 @@ export function advanceDay(state) {
 
   // 5) 인구 변화
   let population = state.population;
-  if (happiness >= 50 && population < derived.maxPop && !foodShort) {
-    population += 0.35 + ((happiness - 50) / 50) * 0.85; // 인구 증가 속도 대폭 상향
+  if (happiness >= 45 && population < derived.maxPop && !foodShort) {
+    // 인구 증가 속도 대폭 상향: 행복도 45 → +1.2/일, 100 → +4.0/일
+    population += 1.2 + ((happiness - 45) / 55) * 2.8;
     population = Math.min(population, derived.maxPop);
   } else if (happiness < 35) {
     population = Math.max(0, population - 0.2);
