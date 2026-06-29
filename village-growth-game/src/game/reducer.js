@@ -19,7 +19,7 @@ import { PLACEABLES } from './world/worldgen';
 import { RECIPES, itemCount } from './crafting';
 import { QUESTS, questProgress } from './quests';
 import { itemDef } from './items';
-import { enhanceCost, enhanceChance, repairCost } from './combat';
+import { enhanceCost, enhanceChance, enhanceDowngrades, repairCost, MAX_ENHANCE } from './combat';
 import {
   WAR_UNLOCK_RANK, GENERAL_COST, TROOPS, TROOP_LIST,
   rollGeneral, armyPower, troopCount, villageDefense,
@@ -599,16 +599,31 @@ export function gameReducer(state, action) {
     case 'ENHANCE': {
       const inst = state.gear[action.slot];
       if (!inst) return state;
+      if (inst.enh >= MAX_ENHANCE) {
+        return { ...state, log: log(state, `이미 최대 강화(+${MAX_ENHANCE})입니다.`, 'warn') };
+      }
       const cost = enhanceCost(inst.enh);
       if (state.money < cost.gold || (state.inventory.crystal || 0) < cost.crystal) {
         return { ...state, log: log(state, '강화 재료가 부족합니다. (골드/마력 수정)', 'warn') };
       }
       const inventory = { ...state.inventory, crystal: (state.inventory.crystal || 0) - cost.crystal };
       const success = Math.random() < enhanceChance(inst.enh);
-      const gear = { ...state.gear, [action.slot]: { ...inst, enh: inst.enh + (success ? 1 : 0) } };
+      // 실패: 일정 단계 이상이면 한 단계 하락, 미만이면 단계 유지
+      let nextEnh = inst.enh;
+      let msg;
+      if (success) {
+        nextEnh = inst.enh + 1;
+        msg = { text: `🔨 강화 성공! +${nextEnh}`, kind: 'good' };
+      } else if (enhanceDowngrades(inst.enh)) {
+        nextEnh = inst.enh - 1;
+        msg = { text: `🔨 강화 실패… 단계 하락 +${nextEnh}`, kind: 'warn' };
+      } else {
+        msg = { text: '🔨 강화 실패… 단계는 유지됩니다.', kind: 'warn' };
+      }
+      const gear = { ...state.gear, [action.slot]: { ...inst, enh: nextEnh } };
       return {
         ...state, money: state.money - cost.gold, inventory, gear,
-        log: log(state, success ? `🔨 강화 성공! +${inst.enh + 1}` : '🔨 강화 실패...', success ? 'good' : 'warn'),
+        log: log(state, msg.text, msg.kind),
       };
     }
     case 'REPAIR': {
