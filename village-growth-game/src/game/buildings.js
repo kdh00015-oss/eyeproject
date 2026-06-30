@@ -10,7 +10,7 @@ export const BUILDINGS = {
     baseCost: 60,
     costGrowth: 1.6,
     maxLevel: 10,
-    desc: '최대 인구 +4 / 레벨',
+    desc: '주민 +6 즉시 이주 · 최대 인구 +7 / 레벨',
   },
   warehouse: {
     id: 'warehouse',
@@ -60,6 +60,9 @@ export const BUILDINGS = {
 };
 
 export const BUILDING_LIST = Object.values(BUILDINGS);
+
+// 집을 지을 때마다 즉시 이주해 오는 주민 수
+export const POP_PER_HOUSE = 6;
 
 // 현재 레벨에서 다음 단계(건설/업그레이드) 비용
 export function buildingCost(buildingId, level) {
