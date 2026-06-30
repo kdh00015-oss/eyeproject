@@ -27,6 +27,7 @@ function mergeBase(data) {
     generals: Array.isArray(data.generals) ? data.generals : base.generals,
     army: { ...base.army, ...(data.army || {}) },
     nextGeneralId: data.nextGeneralId || base.nextGeneralId,
+    war: data.war && data.war.terr ? data.war : base.war,
     skills: { ...base.skills, ...(data.skills || {}) },
     class: data.class || base.class,
     dex: { ...(data.dex || {}) },

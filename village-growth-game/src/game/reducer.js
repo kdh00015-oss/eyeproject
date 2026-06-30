@@ -24,6 +24,9 @@ import {
   WAR_UNLOCK_RANK, GENERAL_COST, TROOPS, TROOP_LIST,
   rollGeneral, armyPower, troopCount, villageDefense,
 } from './military';
+import {
+  territoryById, attackOrigins, resolveBattle, enemyTurn, isUnified, WAR_TROOP_COST,
+} from './warmap';
 import { skillLevel, skillBonus } from './skills';
 import { cbonus } from './classes';
 import { ARMORY_STOCK } from './shops';
@@ -756,6 +759,90 @@ export function gameReducer(state, action) {
         return { ...state, army, villages, influence: state.influence + tpl.influence * 3, log: log(state, `🏰 '${tpl.name}' 정복 성공! 영토로 편입했습니다.`, 'good') };
       }
       return { ...state, army, log: log(state, `⚔️ '${tpl.name}' 공격 실패... 병력을 잃었습니다.`, 'warn') };
+    }
+
+    // --- 삼국지식 영토 전역 ---
+    case 'WAR_RECRUIT': { // 영토에 모병
+      if (state.rankIndex < WAR_UNLOCK_RANK) return { ...state, log: log(state, '촌장 이상부터 전역에 참여할 수 있습니다.', 'warn') };
+      const st = state.war.terr[action.id];
+      if (!st || st.owner !== 'player') return state;
+      const qty = action.qty || 50;
+      const cost = qty * WAR_TROOP_COST;
+      if (state.money < cost) return { ...state, log: log(state, `모병 비용(${cost}골드)이 부족합니다.`, 'warn') };
+      const terr = { ...state.war.terr, [action.id]: { ...st, troops: st.troops + qty } };
+      return {
+        ...state, money: state.money - cost, war: { ...state.war, terr },
+        log: log(state, `🪖 ${territoryById(action.id).name}에 병력 ${qty} 모병.`, 'good'),
+      };
+    }
+    case 'WAR_DEPLOY_GENERAL': { // 보유 장수를 영토 수비장으로 배치
+      const st = state.war.terr[action.terrId];
+      const g = state.generals.find((x) => x.id === action.genId);
+      if (!st || st.owner !== 'player' || !g) return state;
+      // 이미 다른 영토를 맡고 있으면 거기서 회수
+      const terr = {};
+      for (const id of Object.keys(state.war.terr)) {
+        const cur = state.war.terr[id];
+        terr[id] = cur.gen && cur.gen.id === g.id ? { ...cur, gen: null } : cur;
+      }
+      terr[action.terrId] = { ...terr[action.terrId], gen: { id: g.id, name: g.name, might: g.might, command: g.command, intellect: g.intellect } };
+      return { ...state, war: { ...state.war, terr }, log: log(state, `🎖️ ${g.name}을(를) ${territoryById(action.terrId).name} 수비장으로 배치.`, 'good') };
+    }
+    case 'WAR_ATTACK': { // 인접 적 영토 공격
+      if (state.rankIndex < WAR_UNLOCK_RANK) return { ...state, log: log(state, '촌장 이상부터 전역에 참여할 수 있습니다.', 'warn') };
+      const target = state.war.terr[action.targetId];
+      if (!target || target.owner === 'player') return state;
+      const origins = attackOrigins(state.war, action.targetId, 'player');
+      if (origins.length === 0) return { ...state, log: log(state, '공격할 수 있는 인접 아군 영토(병력)가 없습니다.', 'warn') };
+      // 지정 출발지 또는 병력이 가장 많은 인접 영토
+      const fromId = (action.fromId && origins.includes(action.fromId))
+        ? action.fromId
+        : origins.reduce((a, b) => (state.war.terr[a].troops >= state.war.terr[b].troops ? a : b));
+      const from = state.war.terr[fromId];
+      const res = resolveBattle({ troops: from.troops, gen: from.gen }, { troops: target.troops, gen: target.gen });
+      const terr = { ...state.war.terr };
+      const fromN = territoryById(fromId).name, toN = territoryById(action.targetId).name;
+      let influence = state.influence;
+      if (res.win) {
+        terr[fromId] = { ...from, troops: 0, gen: null }; // 출정군이 진격
+        terr[action.targetId] = { owner: 'player', troops: Math.max(1, res.attLeft), gen: from.gen };
+        influence += territoryById(action.targetId).inf * 2;
+      } else {
+        terr[fromId] = { ...from, troops: res.attLeft };
+        terr[action.targetId] = { ...target, troops: res.defLeft };
+      }
+      const war = { ...state.war, terr };
+      let s = { ...state, war, influence };
+      const battleLog = `⚔️ [${fromN}→${toN}] ` + res.logs.join(' / ');
+      s = { ...s, log: log(s, battleLog, res.win ? 'good' : 'warn') };
+      if (res.win && isUnified(war)) {
+        s = { ...s, war: { ...war, unified: true }, log: log(s, '👑 천하통일! 모든 영토를 평정했습니다!', 'good') };
+      }
+      return s;
+    }
+    case 'WAR_END_TURN': { // 다음 턴: 영토 수입 + 병력 증강 + 적 세력 AI
+      if (state.rankIndex < WAR_UNLOCK_RANK) return { ...state, log: log(state, '촌장 이상부터 전역에 참여할 수 있습니다.', 'warn') };
+      // 1) 아군 영토 수입 + 증강
+      let money = state.money, influence = state.influence;
+      const terr = {};
+      for (const id of Object.keys(state.war.terr)) {
+        const cur = state.war.terr[id];
+        if (cur.owner === 'player') {
+          const info = territoryById(id);
+          money += info.income;
+          influence += info.inf;
+          terr[id] = { ...cur, troops: Math.min(800, cur.troops + Math.round(info.income / 8) + 5) };
+        } else {
+          terr[id] = cur;
+        }
+      }
+      // 2) 적 세력 AI
+      const ai = enemyTurn({ ...state.war, terr });
+      const war = { ...state.war, terr: ai.terr, turn: state.war.turn + 1 };
+      let s = { ...state, money, influence, war };
+      const owned = Object.values(ai.terr).filter((t) => t.owner === 'player').length;
+      s = { ...s, log: log(s, `📜 ${war.turn}턴 — 영토 ${owned}곳 수입 +${money - state.money}G. ${ai.logs.length ? ai.logs.join(' · ') : '적 세력 움직임 없음.'}`, 'info') };
+      return s;
     }
 
     case 'VISIT_MAP': {
