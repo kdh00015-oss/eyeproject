@@ -12,7 +12,7 @@ import { GOODS } from './goods';
 import { CROPS } from './crops';
 import { FISHING_SPOTS } from './fishing';
 import { ANIMALS, ranchCap, ranchUpgradeCost, totalAnimals, RANCH_MAX_LEVEL } from './livestock';
-import { BUILDINGS, buildingCost } from './buildings';
+import { BUILDINGS, buildingCost, POP_PER_HOUSE } from './buildings';
 import { RESEARCH_FIELDS, researchCost, MAX_RESEARCH_LEVEL } from './research';
 import { JOBS, randomName, levelFromXp, trainCost, MAX_WORKER_LEVEL, XP_THRESHOLDS } from './workers';
 import { PLACEABLES } from './world/worldgen';
@@ -314,12 +314,24 @@ export function gameReducer(state, action) {
       }
       const buildings = { ...state.buildings, [buildingId]: level + 1 };
       const verb = level === 0 ? '건설' : '업그레이드';
+      // 집을 지으면 주민이 즉시 이주해 온다 (수용 한도까지)
+      let population = state.population;
+      let moveMsg = '';
+      if (buildingId === 'house') {
+        const derived = computeDerived({ ...state, buildings });
+        const moved = Math.min(POP_PER_HOUSE, derived.maxPop - population);
+        if (moved > 0) {
+          population += moved;
+          moveMsg = ` 👶 주민 ${Math.round(moved)}명이 이사 왔습니다!`;
+        }
+      }
       return {
         ...state,
         money: state.money - cost,
         buildings,
+        population,
         stats: { ...state.stats, built: state.stats.built + (level === 0 ? 1 : 0) },
-        log: log(state, `${b.icon} ${b.name}을(를) Lv.${level + 1}로 ${verb}했습니다.`, 'good'),
+        log: log(state, `${b.icon} ${b.name}을(를) Lv.${level + 1}로 ${verb}했습니다.${moveMsg}`, 'good'),
       };
     }
 
@@ -446,14 +458,28 @@ export function gameReducer(state, action) {
       if (state.money < (c.gold || 0) || state.wood < (c.wood || 0) || state.stone < (c.stone || 0)) {
         return { ...state, log: log(state, '자원이 부족합니다. (골드/목재/돌)', 'warn') };
       }
+      const placed = [...state.placed, { type: ptype, x, y, map: map || 'village' }];
+      // 주거 시설(최대 인구를 늘리는 건물)을 지으면 주민이 즉시 이주해 온다
+      let population = state.population;
+      let moveMsg = '';
+      const housePop = (def.effect && def.effect.maxPop) || 0;
+      if (housePop > 0) {
+        const derived2 = computeDerived({ ...state, placed });
+        const moved = Math.min(housePop, derived2.maxPop - population);
+        if (moved > 0) {
+          population += moved;
+          moveMsg = ` 👶 주민 ${Math.round(moved)}명이 이사 왔습니다!`;
+        }
+      }
       return {
         ...state,
         money: state.money - (c.gold || 0),
         wood: state.wood - (c.wood || 0),
         stone: state.stone - (c.stone || 0),
-        placed: [...state.placed, { type: ptype, x, y, map: map || 'village' }],
+        placed,
+        population,
         stats: { ...state.stats, built: state.stats.built + 1 },
-        log: log(state, `🏗️ ${def.name}을(를) 설치했습니다.`, 'good'),
+        log: log(state, `🏗️ ${def.name}을(를) 설치했습니다.${moveMsg}`, 'good'),
       };
     }
 

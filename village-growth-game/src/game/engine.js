@@ -378,8 +378,8 @@ export function advanceDay(state) {
   // 5) 인구 변화
   let population = state.population;
   if (happiness >= 45 && population < derived.maxPop && !foodShort) {
-    // 인구 증가 속도 대폭 상향: 행복도 45 → +1.2/일, 100 → +4.0/일
-    population += 1.2 + ((happiness - 45) / 55) * 2.8;
+    // 집을 지으면 즉시 주민이 늘고, 평상시엔 수용 한도까지 천천히 채워짐
+    population += 0.3 + ((happiness - 45) / 55) * 0.9; // 45 → +0.3/일, 100 → +1.2/일
     population = Math.min(population, derived.maxPop);
   } else if (happiness < 35) {
     population = Math.max(0, population - 0.2);
