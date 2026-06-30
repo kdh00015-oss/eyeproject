@@ -7,11 +7,13 @@ import {
   armyPower, troopCount, armyUpkeep, villageDefense,
 } from '../../game/military';
 import { fmt } from '../../game/util';
+import CampaignMap from './CampaignMap';
 
 const TABS = [
   { id: 'general', name: '장수' },
   { id: 'army', name: '군대' },
   { id: 'war', name: '정복' },
+  { id: 'campaign', name: '전역(천하)' },
 ];
 
 export default function MilitaryWindow({ state, actions }) {
@@ -74,6 +76,8 @@ export default function MilitaryWindow({ state, actions }) {
           ))}
         </div>
       )}
+
+      {tab === 'campaign' && <CampaignMap state={state} actions={actions} />}
 
       {tab === 'war' && (
         <div className="war-list">

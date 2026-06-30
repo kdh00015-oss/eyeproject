@@ -13,6 +13,7 @@ import { BUILDINGS } from './buildings';
 import { GOODS } from './goods';
 import { emptySkills } from './skills';
 import { applyClass } from './classes';
+import { makeInitialWar } from './warmap';
 
 export function createInitialState(classId) {
   // 밭: 각 칸은 비어있음(null) 또는 { cropId, plantedDay }
@@ -89,6 +90,8 @@ export function createInitialState(classId) {
     generals: [], // { id, name, might, command, intellect }
     army: { infantry: 0, archer: 0, cavalry: 0 },
     nextGeneralId: 1,
+    // 삼국지식 영토 전역 (성·세력·턴)
+    war: makeInitialWar(),
     // 마을 레벨 + 주민 만족도 세부지표
     villageLevel: 1,
     satisfaction: { food: 60, safety: 50, culture: 40, education: 30, hygiene: 45 },
