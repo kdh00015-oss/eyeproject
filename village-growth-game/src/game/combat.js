@@ -14,8 +14,19 @@ export const GEAR_SLOTS = [
   { id: 'tool', name: '도구', icon: '🪓' },
 ];
 
-// 장착 인스턴스의 강화 배율
-function enhMult(enh) { return 1 + (enh || 0) * 0.2; }
+// 장착 인스턴스의 강화 배율 (공/방에만 적용, 단계당 +20%)
+export function enhMult(enh) { return 1 + (enh || 0) * 0.2; }
+
+// 특정 장비를 해당 강화 단계로 장착했을 때의 능력치 (공/방은 강화 반영, 체력은 고정)
+export function gearStats(id, enh) {
+  const d = itemDef(id);
+  const m = enhMult(enh);
+  return {
+    atk: Math.round((d.atk || 0) * m),
+    def: Math.round((d.def || 0) * m),
+    hp: d.hp || 0,
+  };
+}
 
 // 플레이어 전투 능력치 (레벨 + 장비)
 export function playerStats(state) {
@@ -37,7 +48,8 @@ export function playerStats(state) {
 
 // 강화 (확률 기반: 성공 시 +1, 실패 시 일정 단계부터 -1 하락)
 export const MAX_ENHANCE = 10;
-export function enhanceCost(enh) { return { gold: 50 + enh * 60, crystal: 1 + enh }; }
+// 강화 비용: 단계가 오를수록 골드가 가파르게 비싸진다 (+0 200G ~ +9 약 1.6만G)
+export function enhanceCost(enh) { return { gold: 200 + enh * 300 + enh * enh * 150, crystal: 1 + enh }; }
 // 성공 확률: +0 → 90%, 단계마다 -10%p, 최저 15%
 export function enhanceChance(enh) { return Math.max(0.15, 0.9 - enh * 0.1); }
 // 실패 시 강화 단계 하락 여부: +4 이상부터 실패하면 한 단계 떨어짐
