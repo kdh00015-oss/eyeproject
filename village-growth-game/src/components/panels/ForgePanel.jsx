@@ -1,5 +1,5 @@
 // 대장간: 장착한 장비를 강화·수리하는 곳
-import { GEAR_SLOTS, enhanceCost, enhanceChance, enhanceDowngrades, repairCost, MAX_ENHANCE } from '../../game/combat';
+import { GEAR_SLOTS, enhanceCost, enhanceChance, enhanceDowngrades, repairCost, MAX_ENHANCE, gearStats } from '../../game/combat';
 import { itemDef, RARITY } from '../../game/items';
 
 export default function ForgePanel({ state, actions }) {
@@ -21,11 +21,22 @@ export default function ForgePanel({ state, actions }) {
             const pct = Math.round(enhanceChance(inst.enh) * 100);
             const risky = enhanceDowngrades(inst.enh);
             const canEnh = !maxed && state.money >= ec.gold && crystal >= ec.crystal;
+            // 현재 능력치 & 강화 시 상승폭 (공/방만 강화 반영)
+            const cur = gearStats(inst.id, inst.enh);
+            const nxt = gearStats(inst.id, inst.enh + 1);
+            const stat = [];
+            if (d.atk) stat.push(`⚔️ ${cur.atk}`);
+            if (d.def) stat.push(`🛡️ ${cur.def}`);
+            if (d.hp) stat.push(`❤️ ${cur.hp}`);
+            const up = [];
+            if (nxt.atk - cur.atk > 0) up.push(`⚔️+${nxt.atk - cur.atk}`);
+            if (nxt.def - cur.def > 0) up.push(`🛡️+${nxt.def - cur.def}`);
             return (
               <div key={s.id} className="forge-card">
                 <span className="forge-name" style={{ color: RARITY[d.rarity].color }}>
                   {d.icon} {d.name}{inst.enh > 0 ? ` +${inst.enh}` : ''}
                 </span>
+                <span className="forge-stat">{stat.join(' · ') || '능력치 없음'}{!maxed && up.length > 0 && <>　→ 강화 시 <b className="ok">{up.join(' ')}</b></>}</span>
                 <span className="forge-meta">
                   {d.maxDur ? `내구 ${inst.dur}/${d.maxDur}` : '내구 없음'}
                   {!maxed && <> · 성공률 <b className={pct >= 60 ? 'ok' : 'lack'}>{pct}%</b>{risky && ' · 실패 시 하락'}</>}

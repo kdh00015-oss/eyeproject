@@ -955,7 +955,11 @@
 .forge-list { display: flex; flex-direction: column; gap: 6px; }
 .forge-card { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,0.16); border: 1px solid rgba(255,255,255,0.1); }
 .forge-name { font-weight: 700; }
+.forge-stat { font-size: 12px; opacity: 0.92; }
+.forge-stat b.ok { color: var(--accent, #6dd36d); }
 .forge-meta { font-size: 11px; opacity: 0.7; }
+.forge-meta b.ok { color: var(--accent, #6dd36d); }
+.forge-meta b.lack { color: #f0a93b; }
 .forge-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* ---- 제작 재료 수급 ---- */
